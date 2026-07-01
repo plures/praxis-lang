@@ -33,11 +33,11 @@
 - [x] **Continuation cron created**: `praxis-lang-epic-continuation` id `0b3ef1e8-0c2a-4c95-b6a7-8162a0e8f0c4` — hourly (`0 * * * *` America/Los_Angeles), wakes MAIN session, reads this tracker, advances the next unchecked stage. DISABLE this at M8.
 - [x] Durable plan committed to git in `plures/praxis-lang` (local clone `C:\Projects\praxis-lang`) with milestone-coded messages so the plan survives even a workspace wipe.\n- **LOOSE END from prior work (not part of this epic):** pares-radix PR #461 (Track A Thread-3 cleanup) still needs a final CI-green squash-merge + worktree `C:/Projects/worktrees/thread3-testing-cleanup` reclaim. Handle opportunistically; do not let it block the epic.
 
-### [ ] M1 — Create the repo + skeleton workspace
-- [ ] `gh repo create plures/<name>` (visibility per M0 gate), MIT license, default branch `main`
-- [ ] Cargo workspace skeleton with empty crates per ADR §3.2 layout
-- [ ] CI scaffold (build + placeholder verify-grammar/verify-schema lanes), branch protection
-- [ ] Acceptance: empty workspace builds green in CI
+### [x] M1 — Create the repo + skeleton workspace (DONE 2026-06-30)
+- [x] `gh repo create plures/praxis-lang` PUBLIC, default branch `main` (MIT LICENSE committed in skeleton; GitHub license auto-detect will pick it up)
+- [x] Cargo workspace skeleton with 9 empty-but-buildable crates per ADR §3.2 (px-ast, px-grammar-gen, px-grammar, px-schema, px-schema-derive, px-compiler, px-eval, px-yaml, px-napi). `cargo build`+`cargo test`+`cargo fmt --check`+`cargo clippy -D warnings` all green locally.
+- [x] CI scaffold (`.github/workflows/ci.yml`): build/test/fmt/clippy + placeholder `verify-grammar`/`verify-schema` lanes (become real regenerate-and-diff drift gates in M3/M4). **Branch protection ON `main`** (strict, requires all 3 checks: build+test, verify-grammar, verify-schema).
+- [x] Acceptance: empty workspace **builds GREEN in CI** — pushed as `9fba208`, CI run 28486372521 = success (build+test ✓, verify-grammar ✓, verify-schema ✓).
 
 ### [x] M2 — Best-concepts reconciliation (the "select the best" pass) — DONE 2026-06-30 (VERIFIED)
 - [x] Mapped PSF ↔ px-ast ↔ grammar v4 construct-by-construct → `PXLANG-M2-RECONCILIATION.md` (227 lines, evidence-grounded)
@@ -86,3 +86,5 @@
 - 2026-06-30 16:55 PDT — kbristol overrode the 6/29 ruling, chose Path A (new repo). ADR + tracker written. Verified name is free, no existing repo. Track B (pluresLM #146) landed as #152 `16a2f74` in parallel. Awaiting M0 gate (repo name + visibility) before M1; M2 reconciliation can begin immediately.
 
 - 2026-06-30 17:xx PDT - M2 reconciliation COMPLETE + VERIFIED. Direct grep confirmed PSF != the .px language (0 language-construct hits, 20+ canvas/app hits). px-ast ratified as sole SSOT; grammar generated from it. Design CORRECTED: PSF does NOT enter praxis-lang (stays downstream as x-app/x-canvas extension); schema artifact = pure JSON-Schema projection of px-ast. praxis-lang is now a focused Rust-first language repo, cleaner than first drafted. ADR + M4/M7 updated. Still awaiting M0 gate (repo name + visibility) before M1 create.
+
+- 2026-06-30 18:0x PDT (autonomous continuation wake) - M1 COMPLETE. Verified on disk/GitHub first: repo plures/praxis-lang exists PUBLIC on `main` but had only the M0 docs commit (no skeleton), license undetected. Advanced M1: added MIT LICENSE, .gitignore, README, root workspace Cargo.toml, and 9 empty-but-buildable crates per ADR §3.2. `cargo build`/`test`/`fmt --check`/`clippy -D warnings` all green locally. Added CI (`ci.yml`) with build/test/fmt/clippy + placeholder verify-grammar/verify-schema drift lanes. Committed `9fba208` ("M1: scaffold Cargo workspace + CI + MIT license"), pushed to main, CI run 28486372521 triggered. NEXT WAKE: confirm CI green (if not already logged), set branch protection opportunistically, then start M3 (migrate px-ast + grammar-gen + generated grammar + px-schema/-derive from C:\Projects\praxis, preserving history where feasible; fold pluresdb-px compiler/executor + praxis-native evaluator per ADR).
