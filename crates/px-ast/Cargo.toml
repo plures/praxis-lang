@@ -11,5 +11,4 @@ description = "Canonical AST for the .px Praxis Intent Language. The language sp
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
-px-schema = { path = "../px-schema" }
-px-schema-derive = { path = "../px-schema-derive" }
+schemars = { workspace = true }

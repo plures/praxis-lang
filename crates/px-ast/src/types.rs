@@ -6,10 +6,12 @@
 //! User-defined: any Ident that isn't a base type
 
 use crate::common::Ident;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A type expression used in field declarations, params, and return types.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum TypeExpr {
     /// Primitive: `bool`, `int`, `float`, `string`, `duration`
     Base(BaseType),
@@ -25,7 +27,7 @@ pub enum TypeExpr {
     Enum(Vec<Ident>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum BaseType {
     Bool,
     Int,

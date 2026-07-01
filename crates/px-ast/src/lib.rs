@@ -34,14 +34,30 @@ pub use procedures::*;
 pub use types::*;
 pub use values::*;
 
+use schemars::JsonSchema;
+
+/// The px-ast crate version that produced a given schema projection.
+///
+/// Emitted into `px.schema.json` (`x-px-ast-version`) so a schema document can
+/// be validated against the exact AST revision that generated it (ADR §M4 /
+/// PXLANG-M2 §3.1.4). Because the schema is regenerated on every release and a
+/// CI drift gate rejects any mismatch, this version and the committed schema
+/// can never silently diverge from px-ast (C-DRIFT-001).
+pub const PX_AST_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// A complete .px document — the root AST node.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, JsonSchema)]
 pub struct PxDocument {
     pub statements: Vec<Statement>,
 }
 
 /// A top-level statement in a .px file.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+///
+/// Adjacently tagged (`{ "kind": "Entity", "value": { .. } }`) so the JSON
+/// projection is stable and legible for TS/schema consumers and handles every
+/// variant shape uniformly (PXLANG-M2 §3.1.2).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum Statement {
     Import(ImportDecl),
     Entity(EntityDecl),

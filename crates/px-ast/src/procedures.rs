@@ -12,6 +12,7 @@ use crate::common::*;
 use crate::expressions::{CodeExpr, Expr};
 use crate::types::TypeExpr;
 use crate::values::Value;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -25,19 +26,21 @@ use serde::{Deserialize, Serialize};
 ///   route_by_intent $intent -> $destination
 ///   return {intent: $intent, destination: $destination}
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DataflowProcedureDecl {
     pub name: Ident,
     pub params: Vec<DataflowParam>,
     pub return_type: Option<DataflowReturn>,
     pub given: Option<StringLiteral>,
     pub body: ProcedureBody,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
 /// A typed parameter with optional queue binding.
 /// `name: Type from "queue_name"`
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DataflowParam {
     pub name: Ident,
     pub param_type: TypeExpr,
@@ -47,7 +50,7 @@ pub struct DataflowParam {
 
 /// Return type with optional queue binding.
 /// `-> Type into "queue_name"`
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DataflowReturn {
     pub return_type: TypeExpr,
     /// The queue output is pushed to.
@@ -67,18 +70,21 @@ pub struct DataflowReturn {
 ///     classify_intent $message -> $intent
 ///     ...
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct LegacyProcedureDecl {
     pub name: Ident,
     pub trigger: Option<ProcedureTrigger>,
     pub params: Vec<Ident>,
     pub given: Option<StringLiteral>,
     pub body: ProcedureBody,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
 /// Legacy trigger (deprecated — prefer dataflow queue bindings).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum ProcedureTrigger {
     Periodic {
         interval: Option<Value>,
@@ -101,7 +107,8 @@ pub enum ProcedureTrigger {
 // PROCEDURE BODY (v1 step-list OR v2 code block)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum ProcedureBody {
     /// v1: Declarative step list
     Steps(Vec<Step>),
@@ -113,7 +120,8 @@ pub enum ProcedureBody {
 // V1 STEPS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum Step {
     /// `define $var = value`
     Define { var: Ident, value: Value },
@@ -151,7 +159,7 @@ pub enum Step {
     Parallel(ParallelStep),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct StepCall {
     pub action: Ident,
     pub args: StepCallArgs,
@@ -159,7 +167,8 @@ pub struct StepCall {
     pub output: Option<Ident>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum StepCallArgs {
     /// `action(expr, expr, ...)`
     Positional(Vec<Expr>),
@@ -173,13 +182,13 @@ pub enum StepCallArgs {
     None,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct MatchArm {
     pub pattern: Expr,
     pub target: Ident,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct LoopStep {
     pub source: LoopSource,
     pub item_name: Option<Ident>,
@@ -188,13 +197,14 @@ pub struct LoopStep {
     pub steps: Vec<Step>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum LoopSource {
     Over(Ident),
     Times(i64),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TryStep {
     pub retries: Option<i64>,
     pub retry_opts: Vec<RetryOpt>,
@@ -202,7 +212,8 @@ pub struct TryStep {
     pub catch: Option<Vec<Step>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum RetryOpt {
     Delay(i64),
     Backoff(BackoffStrategy),
@@ -210,19 +221,19 @@ pub enum RetryOpt {
     Jitter,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum BackoffStrategy {
     Exponential,
     Fixed,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ParallelStep {
     pub output: Option<Ident>,
     pub branches: Vec<ParallelBranch>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ParallelBranch {
     pub name: Ident,
     pub retries: Option<i64>,
@@ -234,12 +245,13 @@ pub struct ParallelBranch {
 // V2 CODE BLOCK (Rust-style imperative body)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CodeBlock {
     pub statements: Vec<CodeStmt>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum CodeStmt {
     /// `let name = expr;`
     Let { name: Ident, value: CodeExpr },
@@ -284,32 +296,35 @@ pub enum CodeStmt {
     Expr(CodeExpr),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum AssignOp {
     Set,       // =
     AddAssign, // +=
     SubAssign, // -=
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum ElseClause {
     ElseIf(Box<CodeStmt>), // else if { ... }
     Else(CodeBlock),       // else { ... }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CodeMatchArm {
     pub pattern: CodePattern,
     pub body: CodeMatchBody,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum CodePattern {
     Wildcard,
     Expr(CodeExpr),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum CodeMatchBody {
     Block(CodeBlock),
     Expr(CodeExpr),

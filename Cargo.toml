@@ -29,3 +29,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 pest = "2.8"
 pest_derive = "2.8"
+# JSON-Schema generation for the px-ast projection (M4). The committed
+# schema/px.schema.json is emitted from these derives and CI-drift-gated.
+schemars = "0.8"

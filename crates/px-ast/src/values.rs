@@ -4,10 +4,12 @@
 
 use crate::common::{DottedIdent, Ident, VarRef};
 use crate::expressions::Expr;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A value that can appear in declarations, step arguments, or config entries.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum Value {
     /// `"hello"` or `'hello'`
     String(String),
@@ -41,7 +43,7 @@ pub enum Value {
     Null,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum ArithOp {
     Add,
     Sub,

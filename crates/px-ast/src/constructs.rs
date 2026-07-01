@@ -7,6 +7,7 @@ use crate::common::*;
 use crate::expressions::Expr;
 use crate::types::TypeExpr;
 use crate::values::Value;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -14,12 +15,14 @@ use serde::{Deserialize, Serialize};
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// `import path::to::module as alias`
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ImportDecl {
     /// The Rust-style path (e.g., `core::memory`)
     pub path: Vec<Ident>,
     /// Optional alias
     pub alias: Option<Ident>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
@@ -35,19 +38,23 @@ pub struct ImportDecl {
 ///     name: string
 ///     inventory: list[string]
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct EntityDecl {
     pub name: Ident,
     pub prefix: Option<StringLiteral>,
     pub fields: Vec<FieldDecl>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
 /// A typed field declaration used in entities, facts, and function params.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FieldDecl {
     pub name: Ident,
     pub field_type: TypeExpr,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
@@ -62,20 +69,23 @@ pub struct FieldDecl {
 ///   nested:
 ///     key: "value"
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ConfigDecl {
     pub name: Ident,
     pub entries: Vec<ConfigEntry>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ConfigEntry {
     pub key: Ident,
     pub value: ConfigValue,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum ConfigValue {
     Scalar(Value),
     Nested(Vec<ConfigEntry>),
@@ -91,10 +101,12 @@ pub enum ConfigValue {
 ///   category: string
 ///   timestamp: int
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FactDecl {
     pub name: Ident,
     pub fields: Vec<FieldDecl>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
@@ -110,7 +122,7 @@ pub struct FactDecl {
 ///   then:
 ///     - action: flag_priority level: "high"
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RuleDecl {
     pub name: Ident,
     pub priority: Option<i64>,
@@ -118,16 +130,18 @@ pub struct RuleDecl {
     pub let_bindings: Vec<LetBinding>,
     pub actions: Vec<ActionStmt>,
     pub captures: Vec<CaptureEntry>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct LetBinding {
     pub name: Ident,
     pub value: Expr,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ActionStmt {
     /// Optional condition (if expr: action)
     pub condition: Option<Expr>,
@@ -135,13 +149,13 @@ pub struct ActionStmt {
     pub params: Vec<ParamPair>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ParamPair {
     pub key: Ident,
     pub value: Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CaptureEntry {
     pub fact: StringLiteral,
     pub category: Option<Ident>,
@@ -160,7 +174,7 @@ pub struct CaptureEntry {
 ///   severity: error
 ///   message: "Empty responses are never acceptable"
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ConstraintDecl {
     pub name: Ident,
     pub scope: Option<Ident>,
@@ -172,10 +186,12 @@ pub struct ConstraintDecl {
     pub require: Option<Expr>,
     pub severity: Severity,
     pub message: Option<StringLiteral>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum Severity {
     Error,
     Warning,
@@ -196,7 +212,7 @@ pub enum Severity {
 ///     - input: "hey what's up"
 ///       expect: "casual_tone"
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ContractDecl {
     pub name: Ident,
     pub given: Option<StringLiteral>,
@@ -204,10 +220,12 @@ pub struct ContractDecl {
     pub then: Option<StringLiteral>,
     pub threshold: Option<f64>,
     pub examples: Vec<ContractExample>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ContractExample {
     pub input: Value,
     pub expect: Value,
@@ -223,17 +241,19 @@ pub struct ContractExample {
 ///   mode: deterministic
 ///   """Classify the user's intent from message content."""
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FunctionDecl {
     pub name: Ident,
     pub params: Vec<FieldDecl>,
     pub return_type: TypeExpr,
     pub mode: Option<FunctionMode>,
     pub docstring: Option<String>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum FunctionMode {
     Deterministic,
     Probabilistic,
@@ -250,16 +270,19 @@ pub enum FunctionMode {
 ///   schedule: "0 3 * * *"
 ///   run: consolidate_memories
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TriggerDecl {
     pub name: Ident,
     pub event: TriggerEvent,
     pub schedule: Option<StringLiteral>,
     pub run: Ident,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum TriggerEvent {
     AfterStore,
     BeforeSearch,
@@ -280,23 +303,25 @@ pub enum TriggerEvent {
 ///   expect:
 ///     - result_contains {text: "question"}
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ScenarioDecl {
     pub name: Ident,
     pub given: Option<StringLiteral>,
     pub setup: Vec<crate::procedures::Step>,
     pub run: Option<ScenarioRun>,
     pub expectations: Vec<Expectation>,
+    #[serde(skip)]
+    #[schemars(skip)]
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ScenarioRun {
     pub procedure: Ident,
     pub args: Option<Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Expectation {
     pub negated: bool,
     pub name: Ident,
