@@ -31,7 +31,7 @@
 - [x] Repo **created**: `plures/praxis-lang` PUBLIC - https://github.com/plures/praxis-lang
 - [x] **Paused all unrelated crons** (RE-ENABLE THESE at M8): `prng-continuous-grind` 7490748f, `sprint-dashboard-refresh` e2fb05c8, `pluresLM-maintenance` 87f4aa17, `release-pipeline-health` 0889c131, `morning-briefing` de7cf03f, `praxisbot-deployment-drift` 9f25bf10, `afternoon-review` 0610a896, `ado-sprint-support-story` 05d2e495
 - [x] **Continuation cron created**: `praxis-lang-epic-continuation` id `0b3ef1e8-0c2a-4c95-b6a7-8162a0e8f0c4` - hourly (`0 * * * *` America/Los_Angeles), wakes MAIN session, reads this tracker, advances the next unchecked stage. DISABLE this at M8.
-- [x] Durable plan committed to git in `plures/praxis-lang` (local clone `C:\Projects\praxis-lang`) with milestone-coded messages so the plan survives even a workspace wipe.\n- **LOOSE END from prior work (not part of this epic):** pares-radix PR #461 (Track A Thread-3 cleanup) still needs a final CI-green squash-merge + worktree `C:/Projects/worktrees/thread3-testing-cleanup` reclaim. Handle opportunistically; do not let it block the epic.
+- [x] Durable plan committed to git in `plures/praxis-lang` (local clone `C:\Projects\praxis-lang`) with milestone-coded messages so the plan survives even a workspace wipe.\n- [x] **LOOSE END (not part of this epic) - DONE 2026-07-01:** pares-radix PR #461 (Track A Thread-3 cleanup, `chore(ci): drop testing/** triggers + remove dormant ghost-CLI workflow`) squash-merged to main (merge commit `07afb9ad`, mergedAt 2026-07-01T11:12:05Z, all CI checks green; wasm skipped as expected). Remote+local branch deleted; worktree `C:/Projects/worktrees/thread3-testing-cleanup` removed (was clean) + pruned. Only canonical `C:/Projects/pares-radix [main]` remains.
 
 ### [x] M1 - Create the repo + skeleton workspace (DONE 2026-06-30)
 - [x] `gh repo create plures/praxis-lang` PUBLIC, default branch `main` (MIT LICENSE committed in skeleton; GitHub license auto-detect will pick it up)
@@ -57,10 +57,13 @@
 - [ ] Release workflow regenerates + commits/publishes schema as part of every release (no manual step)
 - [ ] Acceptance: deliberately change an AST construct → CI goes red until schema regenerated → proves the gate; release dry-run produces an updated schema artifact
 
-### [~] M5 - YAML surface + NAPI bindings (P4 + P5) - WORKER DISPATCHED 2026-07-01
-- [ ] `px-yaml`: YAML <-> px-ast round-trip (same types, no second truth); round-trip tests
-- [ ] `px-napi`: NAPI-RS bindings; published TS package loads native addon; smoke test from Node
-- [ ] Acceptance: a `.px` file and its `.yaml` equivalent both deserialize to identical AST (asserted); Node can compile/evaluate a `.px` via the addon (build-the-binary-run-the-binary)
+### [x] M5 - YAML surface + NAPI bindings (P4 + P5) - DONE + MERGED (PR #2, CI green) 2026-07-01
+- [x] `px-yaml`: YAML <-> px-ast round-trip (same types, no second truth); round-trip tests (roundtrip.rs 3 passed) - commit 872f36d
+- [x] `px-napi`: NAPI-RS v3 cdylib bindings (parse/evaluate/check_constraints/px_ast_version, all delegate to real px-compiler+px-eval); real .node addon built (4.42MB); Node smoke test 7/7 passed - commit 3005703. (npm publish + cross-platform matrix = honest deferred follow-up, not faked.)
+- [x] Acceptance: `.px`<->`.yaml` same-AST parity PROVEN (parity.rs 1 passed); Node loads real addon + parses/evaluates real `.px` (build-the-binary-run-the-binary, smoke green)
+- [x] Retry note: first M5 worker (3h9m) made ZERO progress (lane hang on fire-and-forget build). Re-dispatched with foreground-bounded-build discipline; second worker (10m51s) implemented both crates + ran smoke green but DIED before committing px-napi/writing report/pushing. MAIN session verified ALL runnable gates on disk (build/test/fmt/2 drift gates/roundtrip/parity/node-smoke all GREEN), committed px-napi (3005703), wrote PXLANG-M5-RESULT.md, pushed branch, opened PR #2.
+- [x] clippy: blocked LOCALLY ONLY by a Windows-Defender FALSE-POSITIVE quarantining clippy-driver.exe (`Trojan:Win32/Wacatac.B!ml`, `!ml`=ML heuristic; same toolchain rustc built+tested fine). Elevated exec unavailable in this session -> could not add Defender exclusion. Deferred to CI (Linux, heuristic absent) as the authoritative clippy verdict. kbristol approved proceeding via CI (option A, 2026-07-01 06:17).
+- [x] **MERGED:** PR #2 CI green (build+test incl. clippy-on-Linux ✓, verify-grammar ✓, verify-schema ✓). update-branch'd (was BEHIND) -> re-ran GREEN on merged head -> mergeState CLEAN -> squash-merged -> main **b1f3724** (2026-07-01T13:26Z), branch deleted, worktree `C:\Projects\praxis-lang-m5` reclaimed + pruned, local main fast-forwarded. clippy PROVEN green on Linux CI. So M5 acceptance fully met on the real merge target. AUTO-ADVANCED to M6.
 
 ### [ ] M6 - Rewire downstream consumers
 - [ ] `pluresdb`: delete in-tree `pluresdb-px` engine; `pluresdb-px` imports `praxis-lang` + keeps ONLY procedure tooling (closes ADR-0017)
