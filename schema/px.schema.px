@@ -1,0 +1,420 @@
+# Praxis Intent Language (.px) — schema
+#
+# GENERATED from px-ast via px-schema (do NOT edit by hand).
+# Regenerate: cargo run -p px-schema -- <out-dir>   (or scripts/regen-schema.ps1)
+# Source of truth: crates/px-ast/src/  (ADR §M4, C-DRIFT-001)
+# px-ast version: 0.0.0
+#
+# This is a .px-native projection of the JSON Schema (px.schema.json).
+# Each `schema` block below mirrors one px-ast type; `f` lines are its
+# fields with the projected JSON-Schema type. Sum types (enums) list their
+# `kind` variants. The authoritative machine schema is px.schema.json.
+
+config schema_meta:
+  language: "px"
+  px_ast_version: "0.0.0"
+  json_schema: "px.schema.json"
+  projection_of: "px-ast"
+
+# ── root document ──────────────────────────────────────────────
+schema PxDocument:
+  f statements: list[Statement]
+
+
+# ── constructs & types (projected from px-ast) ─────────────────
+schema Accessor:  # sum type (tagged on `kind`)
+  variant: Dot
+  variant: Bracket
+
+schema ActionStmt:
+  f action_name: Ident
+  f condition: optional[Expr] optional
+  f params: list[ParamPair]
+
+schema ArithOp:  # enum
+  value: Add
+  value: Sub
+  value: Mul
+  value: Div
+  value: Mod
+
+schema AssignOp:  # enum
+  value: Set
+  value: AddAssign
+  value: SubAssign
+
+schema BackoffStrategy:  # enum
+  value: Exponential
+  value: Fixed
+
+schema BaseType:  # enum
+  value: Bool
+  value: Int
+  value: Float
+  value: String
+  value: Duration
+
+schema BinOp:  # enum
+  value: And
+  value: Or
+  value: Eq
+  value: Neq
+  value: Gt
+  value: Lt
+  value: Gte
+  value: Lte
+  value: Add
+  value: Sub
+  value: Mul
+  value: Div
+  value: Mod
+  value: Pow
+
+schema CaptureEntry:
+  f category: optional[Ident] optional
+  f fact: StringLiteral
+  f tags: optional[array] optional
+
+schema CodeAccess:  # sum type (tagged on `kind`)
+  variant: Dot
+  variant: Bracket
+
+schema CodeBlock:
+  f statements: list[CodeStmt]
+
+schema CodeExpr:  # sum type (tagged on `kind`)
+  variant: InlineIf
+  variant: Binary
+  variant: Unary
+  variant: Call
+  variant: Access
+  variant: Closure
+  variant: Object
+  variant: Parallel
+  variant: Literal
+  variant: Paren
+
+schema CodeLiteral:  # sum type (tagged on `kind`)
+  variant: String
+  variant: Integer
+  variant: Float
+  variant: Boolean
+  variant: Null
+
+schema CodeMatchArm:
+  f body: CodeMatchBody
+  f pattern: CodePattern
+
+schema CodeMatchBody:  # sum type (tagged on `kind`)
+  variant: Block
+  variant: Expr
+
+schema CodePattern:  # sum type (tagged on `kind`)
+  variant: Wildcard
+  variant: Expr
+
+schema CodeStmt:  # sum type (tagged on `kind`)
+  variant: Let
+  variant: Assign
+  variant: If
+  variant: For
+  variant: Match
+  variant: Try
+  variant: Parallel
+  variant: Return
+  variant: Emit
+  variant: Expr
+
+schema ConfigDecl:
+  f entries: list[ConfigEntry]
+  f name: Ident
+
+schema ConfigEntry:
+  f key: Ident
+  f value: ConfigValue
+
+schema ConfigValue:  # sum type (tagged on `kind`)
+  variant: Scalar
+  variant: Nested
+
+schema ConstraintDecl:
+  f message: optional[StringLiteral] optional
+  f name: Ident
+  f phase: list[Ident]
+  f prompt: optional[StringLiteral] optional
+  f require: optional[Expr] optional
+  f scope: optional[Ident] optional
+  f severity: Severity
+  f trait_name: optional[Ident] optional
+  f weight: optional[float] optional
+  f when: optional[Expr] optional
+
+schema ContractDecl:
+  f examples: list[ContractExample]
+  f given: optional[StringLiteral] optional
+  f name: Ident
+  f then: optional[StringLiteral] optional
+  f threshold: optional[float] optional
+  f when: optional[StringLiteral] optional
+
+schema ContractExample:
+  f expect: Value
+  f input: Value
+  f threshold: optional[float] optional
+
+schema DataflowParam:
+  f name: Ident
+  f param_type: TypeExpr
+  f source_queue: optional[StringLiteral] optional
+
+schema DataflowProcedureDecl:
+  f body: ProcedureBody
+  f given: optional[StringLiteral] optional
+  f name: Ident
+  f params: list[DataflowParam]
+  f return_type: optional[DataflowReturn] optional
+
+schema DataflowReturn:
+  f dest_queue: optional[StringLiteral] optional
+  f return_type: TypeExpr
+
+schema DottedIdent:
+  f segments: list[Ident]
+
+schema ElseClause:  # sum type (tagged on `kind`)
+  variant: ElseIf
+  variant: Else
+
+schema EntityDecl:
+  f fields: list[FieldDecl]
+  f name: Ident
+  f prefix: optional[StringLiteral] optional
+
+schema Expectation:
+  f args: optional[Value] optional
+  f name: Ident
+  f negated: bool
+
+schema Expr:  # sum type (tagged on `kind`)
+  variant: InlineIf
+  variant: Binary
+  variant: Unary
+  variant: Match
+  variant: Call
+  variant: Path
+  variant: Var
+  variant: Literal
+  variant: Paren
+
+schema ExprMatchArm:
+  f pattern: ExprMatchPattern
+  f result: Expr
+
+schema ExprMatchPattern:  # sum type (tagged on `kind`)
+  variant: Wildcard
+  variant: Values
+
+schema FactDecl:
+  f fields: list[FieldDecl]
+  f name: Ident
+
+schema FieldDecl:
+  f field_type: TypeExpr
+  f name: Ident
+
+schema FunctionDecl:
+  f docstring: optional[string] optional
+  f mode: optional[FunctionMode] optional
+  f name: Ident
+  f params: list[FieldDecl]
+  f return_type: TypeExpr
+
+schema FunctionMode:  # enum
+  value: Deterministic
+  value: Probabilistic
+  value: Hybrid
+
+schema Ident:
+  f name: string
+
+schema ImportDecl:
+  f alias: optional[Ident] optional
+  f path: list[Ident]
+
+schema LegacyProcedureDecl:
+  f body: ProcedureBody
+  f given: optional[StringLiteral] optional
+  f name: Ident
+  f params: list[Ident]
+  f trigger: optional[ProcedureTrigger] optional
+
+schema LetBinding:
+  f name: Ident
+  f value: Expr
+
+schema LoopSource:  # sum type (tagged on `kind`)
+  variant: Over
+  variant: Times
+
+schema LoopStep:
+  f item_name: optional[Ident] optional
+  f key_name: optional[Ident] optional
+  f output: optional[Ident] optional
+  f source: LoopSource
+  f steps: list[Step]
+
+schema MatchArm:
+  f pattern: Expr
+  f target: Ident
+
+schema ParallelBranch:
+  f name: Ident
+  f retries: optional[int] optional
+  f retry_opts: list[RetryOpt]
+  f steps: list[Step]
+
+schema ParallelStep:
+  f branches: list[ParallelBranch]
+  f output: optional[Ident] optional
+
+schema ParamPair:
+  f key: Ident
+  f value: Value
+
+schema ProcedureBody:  # sum type (tagged on `kind`)
+  variant: Steps
+  variant: Code
+
+schema ProcedureTrigger:  # sum type (tagged on `kind`)
+  variant: Periodic
+  variant: OnWrite
+  variant: OnEvent
+  variant: Startup
+  variant: BeforeResponse
+  variant: AfterResponse
+  variant: Cron
+  variant: Manual
+
+schema RetryOpt:  # sum type (tagged on `kind`)
+  variant: Delay
+  variant: Backoff
+  variant: MaxDelay
+  variant: Jitter
+
+schema RuleDecl:
+  f actions: list[ActionStmt]
+  f captures: list[CaptureEntry]
+  f conditions: list[Expr]
+  f let_bindings: list[LetBinding]
+  f name: Ident
+  f priority: optional[int] optional
+
+schema ScenarioDecl:
+  f expectations: list[Expectation]
+  f given: optional[StringLiteral] optional
+  f name: Ident
+  f run: optional[ScenarioRun] optional
+  f setup: list[Step]
+
+schema ScenarioRun:
+  f args: optional[Value] optional
+  f procedure: Ident
+
+schema Severity:  # enum
+  value: Error
+  value: Warning
+  value: Info
+
+schema Statement:  # sum type (tagged on `kind`)
+  variant: Import
+  variant: Entity
+  variant: Config
+  variant: Fact
+  variant: Rule
+  variant: Constraint
+  variant: Contract
+  variant: Function
+  variant: Trigger
+  variant: DataflowProcedure
+  variant: LegacyProcedure
+  variant: Scenario
+
+schema Step:  # sum type (tagged on `kind`)
+  variant: Define
+  variant: Return
+  variant: Abort
+  variant: Call
+  variant: Assign
+  variant: If
+  variant: Match
+  variant: When
+  variant: For
+  variant: Loop
+  variant: Emit
+  variant: Try
+  variant: Parallel
+
+schema StepCall:
+  f action: Ident
+  f args: StepCallArgs
+  f output: optional[Ident] optional
+
+schema StepCallArgs:  # sum type (tagged on `kind`)
+  variant: Positional
+  variant: Map
+  variant: Params
+  variant: Values
+  variant: None
+
+schema StringLiteral:
+  f value: string
+
+schema TriggerDecl:
+  f event: TriggerEvent
+  f name: Ident
+  f run: Ident
+  f schedule: optional[StringLiteral] optional
+
+schema TriggerEvent:  # sum type (tagged on `kind`)
+  variant: AfterStore
+  variant: BeforeSearch
+  variant: OnEvent
+  variant: Timer
+
+schema TryStep:
+  f catch: optional[array] optional
+  f retries: optional[int] optional
+  f retry_opts: list[RetryOpt]
+  f steps: list[Step]
+
+schema TypeExpr:  # sum type (tagged on `kind`)
+  variant: Base
+  variant: Named
+  variant: List
+  variant: Optional
+  variant: Map
+  variant: Enum
+
+schema UnaryOp:  # enum
+  value: Not
+  value: Neg
+
+schema Value:  # sum type (tagged on `kind`)
+  variant: String
+  variant: Integer
+  variant: Float
+  variant: Boolean
+  variant: List
+  variant: Map
+  variant: Call
+  variant: Arithmetic
+  variant: Var
+  variant: Path
+  variant: Ident
+  variant: Paren
+  variant: Null
+
+schema VarRef:
+  f accessors: list[Accessor]
+  f name: Ident
+

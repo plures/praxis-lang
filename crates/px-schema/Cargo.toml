@@ -12,3 +12,9 @@ description = "Schema types and JSON-Schema emitter for .px. The schema is a pro
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = "0.9"
+schemars = { workspace = true }
+px-ast = { path = "../px-ast" }
+
+[[bin]]
+name = "px-schema-gen"
+path = "src/bin/px_schema_gen.rs"
