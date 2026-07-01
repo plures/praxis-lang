@@ -1,0 +1,57 @@
+// memory_assistant.px
+// A realistic slice of a memory-assistant intent spec: typed schemas, a
+// classifier function, a reactive capture rule, and safety constraints.
+// Exercises: import, entity, fact, config, function, rule, constraint.
+
+import core::memory as mem
+import core::llm
+
+entity Conversation:
+  prefix: "conv"
+  fields:
+    id: string
+    participant: string
+    turns: list[string]
+    priority: int
+
+fact MemoryEntry:
+  content: string
+  category: string
+  importance: float
+  timestamp: int
+
+config defaults:
+  max_turns: 200
+  retention_days: 90
+  scoring:
+    base_importance: 0.5
+    urgent_boost: 0.4
+
+function classify_intent(message: string) -> string:
+  mode: deterministic
+  """Classify the user's intent from message content into a routing label."""
+
+rule capture_urgent:
+  priority: 10
+  when:
+    - contains($message, "urgent")
+    - $priority > 5
+  let score = $priority + 5
+  then:
+    - action: flag_priority level: "high" score: $score
+    - if $score > 12: action: page_oncall
+  capture:
+    - fact: "urgent_message" category: alerts tags: ["urgent", "priority"]
+
+constraint no_empty_response:
+  scope: response
+  phase: pre_send
+  require: len($response) > 0
+  severity: error
+  message: "Empty responses are never acceptable"
+
+constraint bounded_turns:
+  when: $turns > 0
+  require: $turns <= 200
+  severity: warning
+  message: "Conversation exceeds recommended turn budget"

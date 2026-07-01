@@ -1500,11 +1500,16 @@ fn build_procedure_trigger(pair: Pair<'_>) -> R<ProcedureTrigger> {
 //   "periodic" ~ map_val? | "on_write" ~ trigger_pattern? ~ map_val? | "on_event" ~ "(" ~ string ~ ")"
 //   | "startup" | "before_response" | "after_response" | "cron" ~ map_val? | "manual" }
 fn build_procedure_trigger_kind(pair: Pair<'_>) -> R<ProcedureTrigger> {
-    // The bare keyword is the first whitespace-delimited token of the match.
+    // The bare keyword is the leading identifier of the match. Note that
+    // compound forms like `on_write("q")` have NO whitespace before `(`, so we
+    // take the leading `[a-z_]+` run rather than splitting on whitespace.
     let raw = pair.as_str().trim();
-    let keyword = raw.split_whitespace().next().unwrap_or("");
+    let keyword: String = raw
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+        .collect();
     let mut inner = pair.into_inner();
-    match keyword {
+    match keyword.as_str() {
         "periodic" => {
             let interval = match inner.next() {
                 Some(m) => Some(Value::Map(build_map_entries(m)?)),

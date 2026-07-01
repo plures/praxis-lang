@@ -220,4 +220,33 @@ mod tests {
         let err = parse("entity Broken\n").unwrap_err();
         matches!(err, CompileError::Parse(_));
     }
+
+    #[test]
+    fn parses_legacy_procedure_trigger_kinds() {
+        use px_ast::ProcedureTrigger;
+        // Compound trigger with a parenthesized pattern (no space before `(`).
+        let on_write = "procedure p:\n  trigger: on_write(\"inbound\")\n  return 1\n";
+        match &parse(on_write).unwrap().statements[0] {
+            Statement::LegacyProcedure(p) => {
+                assert!(matches!(p.trigger, Some(ProcedureTrigger::OnWrite { .. })));
+            }
+            other => panic!("expected legacy procedure, got {other:?}"),
+        }
+        // Bare keyword trigger.
+        let manual = "procedure q:\n  trigger: manual\n  return 1\n";
+        match &parse(manual).unwrap().statements[0] {
+            Statement::LegacyProcedure(p) => {
+                assert!(matches!(p.trigger, Some(ProcedureTrigger::Manual)));
+            }
+            other => panic!("expected legacy procedure, got {other:?}"),
+        }
+        // Compound trigger carrying a map_val (`cron { ... }`).
+        let cron = "procedure r:\n  trigger: cron {expr: \"0 3 * * *\"}\n  return 1\n";
+        match &parse(cron).unwrap().statements[0] {
+            Statement::LegacyProcedure(p) => {
+                assert!(matches!(p.trigger, Some(ProcedureTrigger::Cron { .. })));
+            }
+            other => panic!("expected legacy procedure, got {other:?}"),
+        }
+    }
 }

@@ -1,0 +1,51 @@
+// routing_pipeline.px
+// A message-routing dataflow: typed queue-bound procedures, a legacy trigger,
+// a behavioral contract, and a test scenario.
+// Exercises: entity, dataflow procedure (steps + return), trigger, contract, scenario.
+
+entity RouteDecision:
+  prefix: "route"
+  fields:
+    intent: string
+    destination: string
+    confidence: float
+
+procedure classify_and_route(msg: string from "inbound") -> string into "route_decision":
+  given: "Classify message intent and determine routing destination"
+  classify_intent $msg -> $intent
+  route_by_intent $intent -> $destination
+  return {intent: $intent, destination: $destination}
+
+procedure enrich(entry: string from "route_decision") -> string into "enriched":
+  given: "Attach metadata to a routing decision"
+  {
+    let tag = upper(entry);
+    let score = 1 + 2 * 3;
+    return score;
+  }
+
+trigger daily_consolidation:
+  on: timer
+  schedule: "0 3 * * *"
+  run: consolidate_memories
+
+contract tone_matching:
+  given: "User sends a casual message"
+  when: "Responding to the user"
+  then: "Match the casual tone"
+  threshold: 0.8
+  examples:
+    - input: "hey what's up"
+      expect: "casual_tone"
+    - input: "Good morning, I have a question"
+      expect: "formal_tone"
+
+scenario test_routing:
+  given: "User sends a question"
+  setup:
+    define $msg = "What time is it?"
+    define $expected = "question"
+  run: classify_and_route {input: $msg}
+  expect:
+    - result_contains {text: "question"}
+    - NOT error_raised {}
