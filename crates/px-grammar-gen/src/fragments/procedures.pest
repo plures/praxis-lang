@@ -1,0 +1,42 @@
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PROCEDURES (the executable logic layer)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// === Dataflow Procedures (v3 — queue-driven, typed args, NO triggers) ===
+// This is the PRIMARY procedure form. Uses typed parameters with queue bindings.
+// procedure name(arg: type from "queue", ...) -> return_type into "queue":
+//   steps...
+//   OR
+//   { code_block }
+dataflow_procedure_decl = {
+    "procedure" ~ ident ~ "(" ~ dataflow_param_list? ~ ")" ~ dataflow_return_type? ~ ":" ~ NEWLINE
+  ~ given_clause?
+  ~ (code_block | step_list)
+}
+dataflow_param_list = { dataflow_param ~ ("," ~ dataflow_param)* }
+dataflow_param = { ident ~ ":" ~ type_expr ~ dataflow_source_binding? }
+dataflow_source_binding = { "from" ~ string }
+dataflow_return_type = { "->" ~ type_expr ~ dataflow_dest_binding? }
+dataflow_dest_binding = { "into" ~ string }
+
+// === Legacy Procedures (v1 — step-list with optional trigger, kept for migration) ===
+procedure_decl = { "procedure" ~ ident ~ ":" ~ NEWLINE ~ procedure_body }
+procedure_body = { procedure_trigger_clause? ~ params_clause? ~ given_clause? ~ (code_block | step_list) }
+params_clause = { "params:" ~ "[" ~ param_ident ~ ("," ~ param_ident)* ~ "]" ~ NEWLINE }
+param_ident = @{ "$"? ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+procedure_trigger_clause = { "trigger:" ~ procedure_trigger_kind ~ NEWLINE ~ trigger_sub_keys? }
+procedure_trigger_kind = {
+    "periodic" ~ map_val?
+  | "on_write" ~ trigger_pattern? ~ map_val?
+  | "on_event" ~ "(" ~ string ~ ")"
+  | "startup"
+  | "before_response"
+  | "after_response"
+  | "cron" ~ map_val?
+  | "manual"
+}
+trigger_pattern = { "(" ~ string ~ ")" }
+trigger_sub_keys = { (trigger_sub_key ~ NEWLINE)+ }
+trigger_sub_key = { !("params:" | "given:" | "steps:" | "{") ~ ident ~ ":" ~ trigger_sub_value }
+trigger_sub_value = @{ (!NEWLINE ~ ANY)+ }

@@ -12,3 +12,6 @@ description = "Derive macros for the px-schema layer of the .px Praxis Intent La
 proc-macro = true
 
 [dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"

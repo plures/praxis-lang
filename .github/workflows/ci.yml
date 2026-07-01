@@ -41,11 +41,16 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
       - name: Verify grammar is regenerated from px-ast (drift gate)
-        # PLACEHOLDER (epic M1): becomes a real regenerate-and-diff gate in M3/M4.
-        # It will run px-grammar-gen, regenerate grammar.pest, and fail if the
-        # committed grammar differs from the regenerated output (ADR-0021 /
-        # C-DRIFT-001). For now it just asserts the generator crate builds.
-        run: cargo build -p px-grammar-gen -p px-grammar
+        # Real regenerate-and-diff gate (epic M3, ADR-0021 / C-DRIFT-001):
+        # grammar.pest is a GENERATED artifact. Regenerate it from px-ast via
+        # px-grammar-gen and fail if the committed grammar drifts from output.
+        run: |
+          cargo run -q -p px-grammar-gen > /tmp/px.grammar.gen.pest
+          if ! diff -u crates/px-grammar/src/grammar.pest /tmp/px.grammar.gen.pest; then
+            echo "::error::grammar.pest is stale — regenerate with: cargo run -p px-grammar-gen > crates/px-grammar/src/grammar.pest"
+            exit 1
+          fi
+          echo "grammar.pest matches px-grammar-gen output (no drift)."
 
   verify-schema:
     name: verify-schema (placeholder)

@@ -1,0 +1,33 @@
+
+// ══════════════════════════════════════════════════════════════════════════════
+// V1 EXPRESSIONS (declarative contexts: rules, constraints, when clauses)
+// Simpler than code_expr but handles comparison, logic, arithmetic.
+// ══════════════════════════════════════════════════════════════════════════════
+
+expr = { inline_if | comparison ~ (logic_op ~ comparison)* }
+inline_if = { "if" ~ comparison ~ ":" ~ comparison ~ "else:" ~ comparison }
+comparison = { additive ~ (comp_op ~ additive)? }
+additive = { multiplicative ~ (add_op ~ multiplicative)* }
+multiplicative = { power ~ (mul_op ~ power)* }
+power = { unary ~ ("^" ~ unary)* }
+unary = { neg_expr | not_expr | atom }
+neg_expr = { "-" ~ atom }
+atom = { match_expr | call_expr | dotted_ident | value | "(" ~ expr ~ ")" }
+logic_op = { "&&" | "||" | "AND" | "OR" | "and" | "or" }
+comp_op = { "==" | "!=" | ">=" | "<=" | ">" | "<" }
+add_op = { "+" | "-" }
+mul_op = { "*" | "/" | "%" }
+not_expr = { ("!" | "NOT" | "not") ~ atom }
+
+// Match expression: match subject { pattern => result, _ => default }
+match_expr = { "match" ~ match_subject ~ "{" ~ NEWLINE? ~ match_expr_arm_list ~ "}" }
+match_subject = { call_expr | dotted_ident | value }
+match_expr_arm_list = { NEWLINE* ~ (match_expr_arm ~ ","? ~ NEWLINE*)+ }
+match_expr_arm = { match_pattern ~ "=>" ~ match_result }
+match_pattern = { "_" | multi_pattern }
+multi_pattern = { match_single_pattern ~ ("|" ~ match_single_pattern)* }
+match_single_pattern = { value }
+match_result = { call_expr | dotted_ident | value }
+call_expr = { ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
+dotted_ident = @{ ident ~ (("." ~ ident) | bracket_segment)* }
+bracket_segment = @{ "[" ~ (ASCII_DIGIT+ | ("\"" ~ (!"\"" ~ ANY)* ~ "\"") | ("'" ~ (!("'") ~ ANY)* ~ "'")) ~ "]" }

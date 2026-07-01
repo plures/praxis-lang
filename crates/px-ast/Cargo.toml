@@ -9,3 +9,7 @@ rust-version.workspace = true
 description = "Canonical AST for the .px Praxis Intent Language. The language spec: if a construct is not represented here, it does not exist in the language."
 
 [dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+px-schema = { path = "../px-schema" }
+px-schema-derive = { path = "../px-schema-derive" }

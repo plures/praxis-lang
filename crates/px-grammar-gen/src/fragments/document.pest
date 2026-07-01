@@ -1,0 +1,16 @@
+document = { SOI ~ NEWLINE* ~ (statement ~ NEWLINE*)* ~ EOI }
+
+statement = _{
+    import_decl
+  | entity_decl
+  | config_decl
+  | fact_decl
+  | rule_decl
+  | constraint_decl
+  | contract_decl
+  | function_decl
+  | trigger_decl
+  | dataflow_procedure_decl
+  | procedure_decl
+  | scenario_decl
+}

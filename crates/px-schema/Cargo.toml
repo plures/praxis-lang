@@ -9,3 +9,6 @@ rust-version.workspace = true
 description = "Schema types and JSON-Schema emitter for .px. The schema is a projection of px-ast, regenerated on every release."
 
 [dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = "0.9"

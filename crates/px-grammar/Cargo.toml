@@ -9,3 +9,6 @@ rust-version.workspace = true
 description = "The generated .px grammar plus its pest parser binding."
 
 [dependencies]
+
+[dev-dependencies]
+px-grammar-gen = { path = "../px-grammar-gen" }

@@ -1,0 +1,33 @@
+
+// ══════════════════════════════════════════════════════════════════════════════
+// V2 CODE BLOCK (Rust-style imperative body with braces + semicolons)
+// ══════════════════════════════════════════════════════════════════════════════
+
+code_block = { "{" ~ NEWLINE* ~ (code_stmt ~ NEWLINE*)* ~ "}" }
+code_stmt = {
+    code_let_stmt
+  | code_if_stmt
+  | code_for_stmt
+  | code_match_stmt
+  | code_try_stmt
+  | code_parallel_stmt
+  | code_return_stmt
+  | code_emit_stmt
+  | code_assign_stmt
+  | code_expr_stmt
+}
+code_let_stmt = { "let" ~ ident ~ "=" ~ code_expr ~ ";" }
+code_assign_stmt = { code_lvalue ~ code_assign_op ~ code_expr ~ ";" }
+code_assign_op = { "+=" | "-=" | "=" }
+code_lvalue = @{ ident ~ (("." ~ ident) | ("[" ~ (ASCII_DIGIT+ | ("\"" ~ (!"\"" ~ ANY)* ~ "\"") | ("'" ~ (!"'" ~ ANY)* ~ "'")) ~ "]"))* }
+code_if_stmt = { "if" ~ code_expr ~ code_block ~ ("else" ~ (code_if_stmt | code_block))? }
+code_for_stmt = { "for" ~ ident ~ "in" ~ code_expr ~ code_block }
+code_match_stmt = { "match" ~ code_expr ~ "{" ~ NEWLINE* ~ (code_match_arm ~ NEWLINE*)+ ~ "}" }
+code_match_arm = { code_match_pattern ~ "=>" ~ (code_block | code_expr ~ ","?) }
+code_match_pattern = { "_" | code_expr }
+code_try_stmt = { "try" ~ code_block ~ ("catch" ~ ident? ~ code_block)? }
+code_parallel_stmt = { "parallel" ~ "{" ~ NEWLINE* ~ (code_parallel_branch ~ NEWLINE*)+ ~ "}" }
+code_parallel_branch = { ident ~ ":" ~ code_block }
+code_return_stmt = { "return" ~ code_expr? ~ ";" }
+code_emit_stmt = { "emit" ~ "(" ~ code_expr ~ ("," ~ code_expr)? ~ ")" ~ ";" }
+code_expr_stmt = { code_expr ~ ";" }

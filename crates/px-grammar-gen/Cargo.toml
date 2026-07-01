@@ -8,4 +8,9 @@ authors.workspace = true
 rust-version.workspace = true
 description = "Generator that assembles grammar fragments into the canonical grammar.pest for .px. The grammar is a generated artifact, never hand-edited."
 
+[[bin]]
+name = "px-grammar-gen"
+path = "src/main.rs"
+
 [dependencies]
+px-ast = { path = "../px-ast" }

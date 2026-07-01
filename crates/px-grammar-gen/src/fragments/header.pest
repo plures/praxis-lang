@@ -1,0 +1,12 @@
+// Praxis Intent Language (.px) — Grammar v4 (GENERATED)
+// DO NOT EDIT MANUALLY — regenerate with: cargo run -p px-grammar-gen
+// Source of truth: praxis/crates/px-ast/src/
+// ADR: pares-radix/.praxis/decisions/ADR-0021-grammar-as-generated-artifact.md
+//
+// Pinned fragments (hand-curated, too complex for pure codegen):
+// - V1 expressions (operator precedence hierarchy)
+// - V2 code expressions (Rust-style with closures, match, parallel)
+// - Token definitions (ident, var_ref, string literals)
+
+WHITESPACE = _{ " " | "\t" }
+COMMENT = _{ ("#" ~ (!NEWLINE ~ ANY)*) | ("//" ~ (!NEWLINE ~ ANY)*) }

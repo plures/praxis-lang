@@ -1,18 +1,17 @@
-﻿//! Generator that assembles grammar fragments into the canonical grammar.pest for .px. The grammar is a generated artifact, never hand-edited.
+//! px-grammar-gen — Generates `grammar.pest` from `px-ast` canonical types.
 //!
-//! Skeleton crate (epic M1). Implementation lands in later milestones per
-//! docs/epic/PRAXIS-LANG-TRACKER.md. Intentionally empty but buildable.
+//! Architecture:
+//! - Expression grammar (v1 + v2) is a PINNED FRAGMENT (hand-curated operator precedence)
+//! - Declaration grammar is GENERATED from px-ast construct types
+//! - Procedure grammar is SEMI-GENERATED (structure from types, keywords pinned)
+//! - Tokens/values are PINNED (shared)
+//!
+//! Output is deterministic. CI verifies (regenerate-and-diff, C-DRIFT-001):
+//!   cargo run -p px-grammar-gen > /tmp/gen.pest && diff grammar.pest /tmp/gen.pest
+//!
+//! Exposed as a library so downstream crates (e.g. `px-grammar`) can assert the
+//! committed grammar artifact matches this generator's output in-process.
 
-#![forbid(unsafe_code)]
+mod grammar;
 
-/// Placeholder marker so the crate compiles and links cleanly in the workspace.
-/// Removed once real types land.
-pub const CRATE_NAME: &str = "px-grammar-gen";
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn crate_name_is_set() {
-        assert_eq!(super::CRATE_NAME, "px-grammar-gen");
-    }
-}
+pub use grammar::generate_full_grammar;
