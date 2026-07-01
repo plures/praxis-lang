@@ -1,0 +1,3960 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PxDocument",
+  "description": "A complete .px document — the root AST node.",
+  "type": "object",
+  "required": [
+    "statements"
+  ],
+  "properties": {
+    "statements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Statement"
+      }
+    }
+  },
+  "x-px-ast-version": "0.0.0",
+  "definitions": {
+    "Accessor": {
+      "description": "Access path segment on a variable or expression.",
+      "oneOf": [
+        {
+          "description": ".field_name",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Dot"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Ident"
+            }
+          }
+        },
+        {
+          "description": "[\"key\"] or [0]",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Bracket"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "ActionStmt": {
+      "type": "object",
+      "required": [
+        "action_name",
+        "params"
+      ],
+      "properties": {
+        "action_name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "condition": {
+          "description": "Optional condition (if expr: action)",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ParamPair"
+          }
+        }
+      }
+    },
+    "ArithOp": {
+      "type": "string",
+      "enum": [
+        "Add",
+        "Sub",
+        "Mul",
+        "Div",
+        "Mod"
+      ]
+    },
+    "AssignOp": {
+      "type": "string",
+      "enum": [
+        "Set",
+        "AddAssign",
+        "SubAssign"
+      ]
+    },
+    "BackoffStrategy": {
+      "type": "string",
+      "enum": [
+        "Exponential",
+        "Fixed"
+      ]
+    },
+    "BaseType": {
+      "type": "string",
+      "enum": [
+        "Bool",
+        "Int",
+        "Float",
+        "String",
+        "Duration"
+      ]
+    },
+    "BinOp": {
+      "type": "string",
+      "enum": [
+        "And",
+        "Or",
+        "Eq",
+        "Neq",
+        "Gt",
+        "Lt",
+        "Gte",
+        "Lte",
+        "Add",
+        "Sub",
+        "Mul",
+        "Div",
+        "Mod",
+        "Pow"
+      ]
+    },
+    "CaptureEntry": {
+      "type": "object",
+      "required": [
+        "fact"
+      ],
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fact": {
+          "$ref": "#/definitions/StringLiteral"
+        },
+        "tags": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        }
+      }
+    },
+    "CodeAccess": {
+      "oneOf": [
+        {
+          "description": "`.field`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Dot"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Ident"
+            }
+          }
+        },
+        {
+          "description": "`[expr]`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Bracket"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeExpr"
+            }
+          }
+        }
+      ]
+    },
+    "CodeBlock": {
+      "type": "object",
+      "required": [
+        "statements"
+      ],
+      "properties": {
+        "statements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CodeStmt"
+          }
+        }
+      }
+    },
+    "CodeExpr": {
+      "oneOf": [
+        {
+          "description": "`if cond { then_expr } else { else_expr }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "InlineIf"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "condition",
+                "else_val",
+                "then_val"
+              ],
+              "properties": {
+                "condition": {
+                  "$ref": "#/definitions/CodeExpr"
+                },
+                "else_val": {
+                  "$ref": "#/definitions/CodeExpr"
+                },
+                "then_val": {
+                  "$ref": "#/definitions/CodeExpr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Binary operation",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Binary"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "left",
+                "op",
+                "right"
+              ],
+              "properties": {
+                "left": {
+                  "$ref": "#/definitions/CodeExpr"
+                },
+                "op": {
+                  "$ref": "#/definitions/BinOp"
+                },
+                "right": {
+                  "$ref": "#/definitions/CodeExpr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Unary (!, -)",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Unary"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "op",
+                "operand"
+              ],
+              "properties": {
+                "op": {
+                  "$ref": "#/definitions/UnaryOp"
+                },
+                "operand": {
+                  "$ref": "#/definitions/CodeExpr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Function call: `name(args...)`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Call"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "access_chain",
+                "args",
+                "name"
+              ],
+              "properties": {
+                "access_chain": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/CodeAccess"
+                  }
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/CodeExpr"
+                  }
+                },
+                "name": {
+                  "$ref": "#/definitions/Ident"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Variable/path access: `foo.bar[0]`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Access"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "base",
+                "chain"
+              ],
+              "properties": {
+                "base": {
+                  "$ref": "#/definitions/DottedIdent"
+                },
+                "chain": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/CodeAccess"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Closure: `|x, y| expr`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Closure"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "body",
+                "params"
+              ],
+              "properties": {
+                "body": {
+                  "$ref": "#/definitions/CodeExpr"
+                },
+                "params": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Ident"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Object literal: `{ key: value, ... }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Object"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "$ref": "#/definitions/Ident"
+                  },
+                  {
+                    "$ref": "#/definitions/CodeExpr"
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          }
+        },
+        {
+          "description": "Parallel expression: `parallel { branch: { ... }, ... }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Parallel"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "$ref": "#/definitions/Ident"
+                  },
+                  {
+                    "$ref": "#/definitions/CodeBlock"
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          }
+        },
+        {
+          "description": "Literal value",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Literal"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeLiteral"
+            }
+          }
+        },
+        {
+          "description": "Parenthesized: `(expr)`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Paren"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeExpr"
+            }
+          }
+        }
+      ]
+    },
+    "CodeLiteral": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "String"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Integer"
+              ]
+            },
+            "value": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Float"
+              ]
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Boolean"
+              ]
+            },
+            "value": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Null"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "CodeMatchArm": {
+      "type": "object",
+      "required": [
+        "body",
+        "pattern"
+      ],
+      "properties": {
+        "body": {
+          "$ref": "#/definitions/CodeMatchBody"
+        },
+        "pattern": {
+          "$ref": "#/definitions/CodePattern"
+        }
+      }
+    },
+    "CodeMatchBody": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Block"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeBlock"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Expr"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeExpr"
+            }
+          }
+        }
+      ]
+    },
+    "CodePattern": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Wildcard"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Expr"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeExpr"
+            }
+          }
+        }
+      ]
+    },
+    "CodeStmt": {
+      "oneOf": [
+        {
+          "description": "`let name = expr;`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Let"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "name",
+                "value"
+              ],
+              "properties": {
+                "name": {
+                  "$ref": "#/definitions/Ident"
+                },
+                "value": {
+                  "$ref": "#/definitions/CodeExpr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`lvalue = expr;` or `lvalue += expr;`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Assign"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "op",
+                "target",
+                "value"
+              ],
+              "properties": {
+                "op": {
+                  "$ref": "#/definitions/AssignOp"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "value": {
+                  "$ref": "#/definitions/CodeExpr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`if expr { ... } else { ... }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "If"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "condition",
+                "then_block"
+              ],
+              "properties": {
+                "condition": {
+                  "$ref": "#/definitions/CodeExpr"
+                },
+                "else_clause": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/ElseClause"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "then_block": {
+                  "$ref": "#/definitions/CodeBlock"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`for name in expr { ... }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "For"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "body",
+                "iter",
+                "var"
+              ],
+              "properties": {
+                "body": {
+                  "$ref": "#/definitions/CodeBlock"
+                },
+                "iter": {
+                  "$ref": "#/definitions/CodeExpr"
+                },
+                "var": {
+                  "$ref": "#/definitions/Ident"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`match expr { pattern => result, ... }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Match"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "arms",
+                "subject"
+              ],
+              "properties": {
+                "arms": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/CodeMatchArm"
+                  }
+                },
+                "subject": {
+                  "$ref": "#/definitions/CodeExpr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`try { ... } catch name { ... }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Try"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "body"
+              ],
+              "properties": {
+                "body": {
+                  "$ref": "#/definitions/CodeBlock"
+                },
+                "catch": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": [
+                    {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Ident"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    {
+                      "$ref": "#/definitions/CodeBlock"
+                    }
+                  ],
+                  "maxItems": 2,
+                  "minItems": 2
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`parallel { branch_name: { ... }, ... }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Parallel"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "branches"
+              ],
+              "properties": {
+                "branches": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "$ref": "#/definitions/Ident"
+                      },
+                      {
+                        "$ref": "#/definitions/CodeBlock"
+                      }
+                    ],
+                    "maxItems": 2,
+                    "minItems": 2
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`return expr;`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Return"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/CodeExpr"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`emit(queue, value);`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Emit"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "queue"
+              ],
+              "properties": {
+                "queue": {
+                  "$ref": "#/definitions/CodeExpr"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/CodeExpr"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Expression statement: `expr;`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Expr"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeExpr"
+            }
+          }
+        }
+      ]
+    },
+    "ConfigDecl": {
+      "description": "```px config defaults: max_retries: 3 timeout: 5000 nested: key: \"value\" ```",
+      "type": "object",
+      "required": [
+        "entries",
+        "name"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ConfigEntry"
+          }
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        }
+      }
+    },
+    "ConfigEntry": {
+      "type": "object",
+      "required": [
+        "key",
+        "value"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/Ident"
+        },
+        "value": {
+          "$ref": "#/definitions/ConfigValue"
+        }
+      }
+    },
+    "ConfigValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Scalar"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Value"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Nested"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ConfigEntry"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ConstraintDecl": {
+      "description": "```px constraint no_empty_responses: scope: response phase: pre_send require: response.length > 0 severity: error message: \"Empty responses are never acceptable\" ```",
+      "type": "object",
+      "required": [
+        "name",
+        "phase",
+        "severity"
+      ],
+      "properties": {
+        "message": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "phase": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Ident"
+          }
+        },
+        "prompt": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "require": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "severity": {
+          "$ref": "#/definitions/Severity"
+        },
+        "trait_name": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "weight": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ContractDecl": {
+      "description": "```px contract tone_matching: given: \"User sends casual message\" when: \"Responding to user\" then: \"Match casual tone\" threshold: 0.8 examples: - input: \"hey what's up\" expect: \"casual_tone\" ```",
+      "type": "object",
+      "required": [
+        "examples",
+        "name"
+      ],
+      "properties": {
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ContractExample"
+          }
+        },
+        "given": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "then": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "threshold": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ContractExample": {
+      "type": "object",
+      "required": [
+        "expect",
+        "input"
+      ],
+      "properties": {
+        "expect": {
+          "$ref": "#/definitions/Value"
+        },
+        "input": {
+          "$ref": "#/definitions/Value"
+        },
+        "threshold": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        }
+      }
+    },
+    "DataflowParam": {
+      "description": "A typed parameter with optional queue binding. `name: Type from \"queue_name\"`",
+      "type": "object",
+      "required": [
+        "name",
+        "param_type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "param_type": {
+          "$ref": "#/definitions/TypeExpr"
+        },
+        "source_queue": {
+          "description": "The queue this parameter reads from.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "DataflowProcedureDecl": {
+      "description": "```px procedure classify_and_route(msg: InboundMessage from \"inbound\") -> RouteDecision into \"route_decision\": given: \"Classify message intent and determine routing\" classify_intent msg.content -> $intent route_by_intent $intent -> $destination return {intent: $intent, destination: $destination} ```",
+      "type": "object",
+      "required": [
+        "body",
+        "name",
+        "params"
+      ],
+      "properties": {
+        "body": {
+          "$ref": "#/definitions/ProcedureBody"
+        },
+        "given": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DataflowParam"
+          }
+        },
+        "return_type": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DataflowReturn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "DataflowReturn": {
+      "description": "Return type with optional queue binding. `-> Type into \"queue_name\"`",
+      "type": "object",
+      "required": [
+        "return_type"
+      ],
+      "properties": {
+        "dest_queue": {
+          "description": "The queue output is pushed to.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "return_type": {
+          "$ref": "#/definitions/TypeExpr"
+        }
+      }
+    },
+    "DottedIdent": {
+      "description": "A dotted identifier path (e.g., `module.submodule.name`).",
+      "type": "object",
+      "required": [
+        "segments"
+      ],
+      "properties": {
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Ident"
+          }
+        }
+      }
+    },
+    "ElseClause": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "ElseIf"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeStmt"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Else"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeBlock"
+            }
+          }
+        }
+      ]
+    },
+    "EntityDecl": {
+      "description": "```px entity Player: prefix: \"player\" fields: health: int name: string inventory: list[string] ```",
+      "type": "object",
+      "required": [
+        "fields",
+        "name"
+      ],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FieldDecl"
+          }
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "prefix": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Expectation": {
+      "type": "object",
+      "required": [
+        "name",
+        "negated"
+      ],
+      "properties": {
+        "args": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Value"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "negated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Expr": {
+      "oneOf": [
+        {
+          "description": "`if cond: then_val else: else_val`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "InlineIf"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "condition",
+                "else_val",
+                "then_val"
+              ],
+              "properties": {
+                "condition": {
+                  "$ref": "#/definitions/Expr"
+                },
+                "else_val": {
+                  "$ref": "#/definitions/Expr"
+                },
+                "then_val": {
+                  "$ref": "#/definitions/Expr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Binary operation (logic, comparison, arithmetic)",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Binary"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "left",
+                "op",
+                "right"
+              ],
+              "properties": {
+                "left": {
+                  "$ref": "#/definitions/Expr"
+                },
+                "op": {
+                  "$ref": "#/definitions/BinOp"
+                },
+                "right": {
+                  "$ref": "#/definitions/Expr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Unary (!, NOT, -)",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Unary"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "op",
+                "operand"
+              ],
+              "properties": {
+                "op": {
+                  "$ref": "#/definitions/UnaryOp"
+                },
+                "operand": {
+                  "$ref": "#/definitions/Expr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`match subject { pattern => result, ... }`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Match"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "arms",
+                "subject"
+              ],
+              "properties": {
+                "arms": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/ExprMatchArm"
+                  }
+                },
+                "subject": {
+                  "$ref": "#/definitions/Expr"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Function/action call: `name(arg1, arg2)`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Call"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "args",
+                "name"
+              ],
+              "properties": {
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Expr"
+                  }
+                },
+                "name": {
+                  "$ref": "#/definitions/Ident"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Dotted identifier: `foo.bar.baz`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Path"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/DottedIdent"
+            }
+          }
+        },
+        {
+          "description": "Variable reference: `$var` or `$var.field`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Var"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/VarRef"
+            }
+          }
+        },
+        {
+          "description": "Literal value",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Literal"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Value"
+            }
+          }
+        },
+        {
+          "description": "Parenthesized: `(expr)`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Paren"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Expr"
+            }
+          }
+        }
+      ]
+    },
+    "ExprMatchArm": {
+      "type": "object",
+      "required": [
+        "pattern",
+        "result"
+      ],
+      "properties": {
+        "pattern": {
+          "$ref": "#/definitions/ExprMatchPattern"
+        },
+        "result": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    "ExprMatchPattern": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Wildcard"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Values"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Value"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "FactDecl": {
+      "description": "```px fact MemoryEntry: content: string category: string timestamp: int ```",
+      "type": "object",
+      "required": [
+        "fields",
+        "name"
+      ],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FieldDecl"
+          }
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        }
+      }
+    },
+    "FieldDecl": {
+      "description": "A typed field declaration used in entities, facts, and function params.",
+      "type": "object",
+      "required": [
+        "field_type",
+        "name"
+      ],
+      "properties": {
+        "field_type": {
+          "$ref": "#/definitions/TypeExpr"
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        }
+      }
+    },
+    "FunctionDecl": {
+      "description": "```px function classify_intent(message: string) -> string: mode: deterministic \"\"\"Classify the user's intent from message content.\"\"\" ```",
+      "type": "object",
+      "required": [
+        "name",
+        "params",
+        "return_type"
+      ],
+      "properties": {
+        "docstring": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FunctionMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FieldDecl"
+          }
+        },
+        "return_type": {
+          "$ref": "#/definitions/TypeExpr"
+        }
+      }
+    },
+    "FunctionMode": {
+      "type": "string",
+      "enum": [
+        "Deterministic",
+        "Probabilistic",
+        "Hybrid"
+      ]
+    },
+    "Ident": {
+      "description": "An identifier (variable name, construct name, field name). Invariant: ASCII_ALPHA | \"_\" followed by ASCII_ALPHANUMERIC | \"_\"",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "ImportDecl": {
+      "description": "`import path::to::module as alias`",
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "alias": {
+          "description": "Optional alias",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "path": {
+          "description": "The Rust-style path (e.g., `core::memory`)",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Ident"
+          }
+        }
+      }
+    },
+    "LegacyProcedureDecl": {
+      "description": "```px procedure handle_message: trigger: on_write(\"inbound\") params: [$message] given: \"Process an incoming message\" steps: classify_intent $message -> $intent ... ```",
+      "type": "object",
+      "required": [
+        "body",
+        "name",
+        "params"
+      ],
+      "properties": {
+        "body": {
+          "$ref": "#/definitions/ProcedureBody"
+        },
+        "given": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Ident"
+          }
+        },
+        "trigger": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ProcedureTrigger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "LetBinding": {
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "value": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    "LoopSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Over"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Ident"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Times"
+              ]
+            },
+            "value": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      ]
+    },
+    "LoopStep": {
+      "type": "object",
+      "required": [
+        "source",
+        "steps"
+      ],
+      "properties": {
+        "item_name": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key_name": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "$ref": "#/definitions/LoopSource"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Step"
+          }
+        }
+      }
+    },
+    "MatchArm": {
+      "type": "object",
+      "required": [
+        "pattern",
+        "target"
+      ],
+      "properties": {
+        "pattern": {
+          "$ref": "#/definitions/Expr"
+        },
+        "target": {
+          "$ref": "#/definitions/Ident"
+        }
+      }
+    },
+    "ParallelBranch": {
+      "type": "object",
+      "required": [
+        "name",
+        "retry_opts",
+        "steps"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "retries": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "retry_opts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RetryOpt"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Step"
+          }
+        }
+      }
+    },
+    "ParallelStep": {
+      "type": "object",
+      "required": [
+        "branches"
+      ],
+      "properties": {
+        "branches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ParallelBranch"
+          }
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ParamPair": {
+      "type": "object",
+      "required": [
+        "key",
+        "value"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/Ident"
+        },
+        "value": {
+          "$ref": "#/definitions/Value"
+        }
+      }
+    },
+    "ProcedureBody": {
+      "oneOf": [
+        {
+          "description": "v1: Declarative step list",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Steps"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Step"
+              }
+            }
+          }
+        },
+        {
+          "description": "v2: Rust-style code block with braces",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Code"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/CodeBlock"
+            }
+          }
+        }
+      ]
+    },
+    "ProcedureTrigger": {
+      "description": "Legacy trigger (deprecated — prefer dataflow queue bindings).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Periodic"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "interval": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Value"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "OnWrite"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Value"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "pattern": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/StringLiteral"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "OnEvent"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/StringLiteral"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Startup"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "BeforeResponse"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "AfterResponse"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Cron"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "schedule": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Value"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Manual"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "RetryOpt": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Delay"
+              ]
+            },
+            "value": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Backoff"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/BackoffStrategy"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "MaxDelay"
+              ]
+            },
+            "value": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Jitter"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "RuleDecl": {
+      "description": "```px rule detect_urgency: priority: 10 when: - message.contains(\"urgent\") then: - action: flag_priority level: \"high\" ```",
+      "type": "object",
+      "required": [
+        "actions",
+        "captures",
+        "conditions",
+        "let_bindings",
+        "name"
+      ],
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ActionStmt"
+          }
+        },
+        "captures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CaptureEntry"
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "let_bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/LetBinding"
+          }
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "priority": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        }
+      }
+    },
+    "ScenarioDecl": {
+      "description": "```px scenario test_routing: given: \"User sends a question\" setup: define $msg = \"What time is it?\" run: classify_intent {input: $msg} expect: - result_contains {text: \"question\"} ```",
+      "type": "object",
+      "required": [
+        "expectations",
+        "name",
+        "setup"
+      ],
+      "properties": {
+        "expectations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Expectation"
+          }
+        },
+        "given": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "run": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScenarioRun"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "setup": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Step"
+          }
+        }
+      }
+    },
+    "ScenarioRun": {
+      "type": "object",
+      "required": [
+        "procedure"
+      ],
+      "properties": {
+        "args": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Value"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "procedure": {
+          "$ref": "#/definitions/Ident"
+        }
+      }
+    },
+    "Severity": {
+      "type": "string",
+      "enum": [
+        "Error",
+        "Warning",
+        "Info"
+      ]
+    },
+    "Statement": {
+      "description": "A top-level statement in a .px file.\n\nAdjacently tagged (`{ \"kind\": \"Entity\", \"value\": { .. } }`) so the JSON projection is stable and legible for TS/schema consumers and handles every variant shape uniformly (PXLANG-M2 §3.1.2).",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Import"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/ImportDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Entity"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/EntityDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Config"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/ConfigDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Fact"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/FactDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Rule"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/RuleDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Constraint"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/ConstraintDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Contract"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/ContractDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Function"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/FunctionDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Trigger"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/TriggerDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "DataflowProcedure"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/DataflowProcedureDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "LegacyProcedure"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/LegacyProcedureDecl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Scenario"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/ScenarioDecl"
+            }
+          }
+        }
+      ]
+    },
+    "Step": {
+      "oneOf": [
+        {
+          "description": "`define $var = value`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Define"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "value",
+                "var"
+              ],
+              "properties": {
+                "value": {
+                  "$ref": "#/definitions/Value"
+                },
+                "var": {
+                  "$ref": "#/definitions/Ident"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`return value`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Return"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Value"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`abort value`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Abort"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Value"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`action_name arg1 arg2` or `action_name key: value`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Call"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/StepCall"
+            }
+          }
+        },
+        {
+          "description": "`$var = value`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Assign"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "target",
+                "value"
+              ],
+              "properties": {
+                "target": {
+                  "$ref": "#/definitions/VarRef"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`if expr:\\n  steps...\\nelse:\\n  steps...\\nend`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "If"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "condition",
+                "then_steps"
+              ],
+              "properties": {
+                "condition": {
+                  "$ref": "#/definitions/Expr"
+                },
+                "else_steps": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "$ref": "#/definitions/Step"
+                  }
+                },
+                "then_steps": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Step"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`match:\\n  pattern -> action\\nend`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Match"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "arms"
+              ],
+              "properties": {
+                "arms": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/MatchArm"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`when expr:\\n  steps...\\nend`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "When"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "condition",
+                "steps"
+              ],
+              "properties": {
+                "condition": {
+                  "$ref": "#/definitions/Expr"
+                },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Step"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`for $var in collection:\\n  steps...\\nend`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "For"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "collection",
+                "steps",
+                "var"
+              ],
+              "properties": {
+                "collection": {
+                  "$ref": "#/definitions/Expr"
+                },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Step"
+                  }
+                },
+                "var": {
+                  "$ref": "#/definitions/VarRef"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`loop over $list as item:\\n  steps...\\nend`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Loop"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/LoopStep"
+            }
+          }
+        },
+        {
+          "description": "`emit key: value ...`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Emit"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "params"
+              ],
+              "properties": {
+                "params": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "$ref": "#/definitions/Ident"
+                      },
+                      {
+                        "$ref": "#/definitions/Value"
+                      }
+                    ],
+                    "maxItems": 2,
+                    "minItems": 2
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "`try [retry N]:\\n  steps...\\ncatch:\\n  steps...\\nend`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Try"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/TryStep"
+            }
+          }
+        },
+        {
+          "description": "`parallel:\\n  branch name:\\n    steps...\\nend`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Parallel"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/ParallelStep"
+            }
+          }
+        }
+      ]
+    },
+    "StepCall": {
+      "type": "object",
+      "required": [
+        "action",
+        "args"
+      ],
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/Ident"
+        },
+        "args": {
+          "$ref": "#/definitions/StepCallArgs"
+        },
+        "output": {
+          "description": "Optional output variable: `action -> $result`",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Ident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "StepCallArgs": {
+      "oneOf": [
+        {
+          "description": "`action(expr, expr, ...)`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Positional"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          }
+        },
+        {
+          "description": "`action {key: value, ...}`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Map"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Value"
+            }
+          }
+        },
+        {
+          "description": "`action key: value key: value`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Params"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "$ref": "#/definitions/Ident"
+                  },
+                  {
+                    "$ref": "#/definitions/Value"
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          }
+        },
+        {
+          "description": "`action value value value`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Values"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Value"
+              }
+            }
+          }
+        },
+        {
+          "description": "No arguments",
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "None"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "StringLiteral": {
+      "description": "A string literal (single or double quoted in source). The value is the content WITHOUT surrounding quotes.",
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "TriggerDecl": {
+      "description": "```px trigger daily_consolidation: on: timer schedule: \"0 3 * * *\" run: consolidate_memories ```",
+      "type": "object",
+      "required": [
+        "event",
+        "name",
+        "run"
+      ],
+      "properties": {
+        "event": {
+          "$ref": "#/definitions/TriggerEvent"
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        },
+        "run": {
+          "$ref": "#/definitions/Ident"
+        },
+        "schedule": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/StringLiteral"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "TriggerEvent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "AfterStore"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "BeforeSearch"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "OnEvent"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/StringLiteral"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Timer"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "TryStep": {
+      "type": "object",
+      "required": [
+        "retry_opts",
+        "steps"
+      ],
+      "properties": {
+        "catch": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Step"
+          }
+        },
+        "retries": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "retry_opts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RetryOpt"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Step"
+          }
+        }
+      }
+    },
+    "TypeExpr": {
+      "description": "A type expression used in field declarations, params, and return types.",
+      "oneOf": [
+        {
+          "description": "Primitive: `bool`, `int`, `float`, `string`, `duration`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Base"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/BaseType"
+            }
+          }
+        },
+        {
+          "description": "User-defined type name (refers to an entity or fact)",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Named"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Ident"
+            }
+          }
+        },
+        {
+          "description": "`list[T]`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "List"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/TypeExpr"
+            }
+          }
+        },
+        {
+          "description": "`optional[T]`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Optional"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/TypeExpr"
+            }
+          }
+        },
+        {
+          "description": "`map[K, V]`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Map"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": [
+                {
+                  "$ref": "#/definitions/TypeExpr"
+                },
+                {
+                  "$ref": "#/definitions/TypeExpr"
+                }
+              ],
+              "maxItems": 2,
+              "minItems": 2
+            }
+          }
+        },
+        {
+          "description": "`enum(a, b, c)`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Enum"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Ident"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "UnaryOp": {
+      "type": "string",
+      "enum": [
+        "Not",
+        "Neg"
+      ]
+    },
+    "Value": {
+      "description": "A value that can appear in declarations, step arguments, or config entries.",
+      "oneOf": [
+        {
+          "description": "`\"hello\"` or `'hello'`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "String"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "description": "`42` or `-7`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Integer"
+              ]
+            },
+            "value": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        {
+          "description": "`3.14` or `-0.5`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Float"
+              ]
+            },
+            "value": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        {
+          "description": "`true` or `false`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Boolean"
+              ]
+            },
+            "value": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "description": "`[val1, val2, ...]`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "List"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Value"
+              }
+            }
+          }
+        },
+        {
+          "description": "`{key: value, key: value, ...}`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Map"
+              ]
+            },
+            "value": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "$ref": "#/definitions/Ident"
+                  },
+                  {
+                    "$ref": "#/definitions/Value"
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          }
+        },
+        {
+          "description": "Function call used as value: `func(args)`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Call"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "args",
+                "name"
+              ],
+              "properties": {
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Expr"
+                  }
+                },
+                "name": {
+                  "$ref": "#/definitions/Ident"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Arithmetic expression: `a + b` (simple binary in value position)",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Arithmetic"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "left",
+                "op",
+                "right"
+              ],
+              "properties": {
+                "left": {
+                  "$ref": "#/definitions/Value"
+                },
+                "op": {
+                  "$ref": "#/definitions/ArithOp"
+                },
+                "right": {
+                  "$ref": "#/definitions/Value"
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Variable reference: `$var` or `$var.field`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Var"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/VarRef"
+            }
+          }
+        },
+        {
+          "description": "Dotted identifier path: `foo.bar.baz`",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Path"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/DottedIdent"
+            }
+          }
+        },
+        {
+          "description": "Bare identifier used as value (e.g., enum variant name)",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Ident"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Ident"
+            }
+          }
+        },
+        {
+          "description": "Parenthesized expression",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Paren"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/Expr"
+            }
+          }
+        },
+        {
+          "description": "Null (explicit absence)",
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Null"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "VarRef": {
+      "description": "A variable reference: $name or $name.field or $name[\"key\"]",
+      "type": "object",
+      "required": [
+        "accessors",
+        "name"
+      ],
+      "properties": {
+        "accessors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Accessor"
+          }
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        }
+      }
+    }
+  }
+}

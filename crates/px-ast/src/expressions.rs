@@ -8,6 +8,7 @@
 
 use crate::common::*;
 use crate::values::Value;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -17,7 +18,8 @@ use serde::{Deserialize, Serialize};
 //   additive (+, -) → multiplicative (*, /, %) → power (^) → unary (!, -, NOT)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum Expr {
     /// `if cond: then_val else: else_val`
     InlineIf {
@@ -50,7 +52,7 @@ pub enum Expr {
     Paren(Box<Expr>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum BinOp {
     // Logic (lowest precedence)
     And,
@@ -73,19 +75,20 @@ pub enum BinOp {
     Pow,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum UnaryOp {
     Not,
     Neg,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ExprMatchArm {
     pub pattern: ExprMatchPattern,
     pub result: Expr,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum ExprMatchPattern {
     Wildcard,
     Values(Vec<Value>),
@@ -98,7 +101,8 @@ pub enum ExprMatchPattern {
 //   additive (+, -) → multiplicative (*, /, %) → power (^) → unary (!, -)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum CodeExpr {
     /// `if cond { then_expr } else { else_expr }`
     InlineIf {
@@ -140,7 +144,8 @@ pub enum CodeExpr {
     Paren(Box<CodeExpr>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum CodeAccess {
     /// `.field`
     Dot(Ident),
@@ -148,7 +153,8 @@ pub enum CodeAccess {
     Bracket(Box<CodeExpr>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "value")]
 pub enum CodeLiteral {
     String(String),
     Integer(i64),
