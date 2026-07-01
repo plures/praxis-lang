@@ -1,0 +1,296 @@
+statements:
+- kind: Import
+  value:
+    path:
+    - name: core
+    - name: memory
+    alias:
+      name: mem
+- kind: Import
+  value:
+    path:
+    - name: core
+    - name: llm
+    alias: null
+- kind: Entity
+  value:
+    name:
+      name: Conversation
+    prefix:
+      value: conv
+    fields:
+    - name:
+        name: id
+      field_type:
+        kind: Base
+        value: String
+    - name:
+        name: participant
+      field_type:
+        kind: Base
+        value: String
+    - name:
+        name: turns
+      field_type:
+        kind: List
+        value:
+          kind: Base
+          value: String
+    - name:
+        name: priority
+      field_type:
+        kind: Base
+        value: Int
+- kind: Fact
+  value:
+    name:
+      name: MemoryEntry
+    fields:
+    - name:
+        name: content
+      field_type:
+        kind: Base
+        value: String
+    - name:
+        name: category
+      field_type:
+        kind: Base
+        value: String
+    - name:
+        name: importance
+      field_type:
+        kind: Base
+        value: Float
+    - name:
+        name: timestamp
+      field_type:
+        kind: Base
+        value: Int
+- kind: Config
+  value:
+    name:
+      name: defaults
+    entries:
+    - key:
+        name: max_turns
+      value:
+        kind: Scalar
+        value:
+          kind: Integer
+          value: 200
+    - key:
+        name: retention_days
+      value:
+        kind: Scalar
+        value:
+          kind: Integer
+          value: 90
+    - key:
+        name: scoring
+      value:
+        kind: Nested
+        value:
+        - key:
+            name: base_importance
+          value:
+            kind: Scalar
+            value:
+              kind: Float
+              value: 0.5
+        - key:
+            name: urgent_boost
+          value:
+            kind: Scalar
+            value:
+              kind: Float
+              value: 0.4
+- kind: Function
+  value:
+    name:
+      name: classify_intent
+    params:
+    - name:
+        name: message
+      field_type:
+        kind: Base
+        value: String
+    return_type:
+      kind: Base
+      value: String
+    mode: Deterministic
+    docstring: Classify the user's intent from message content into a routing label.
+- kind: Rule
+  value:
+    name:
+      name: capture_urgent
+    priority: 10
+    conditions:
+    - kind: Call
+      value:
+        name:
+          name: contains
+        args:
+        - kind: Var
+          value:
+            name:
+              name: message
+            accessors: []
+        - kind: Literal
+          value:
+            kind: String
+            value: urgent
+    - kind: Binary
+      value:
+        left:
+          kind: Var
+          value:
+            name:
+              name: priority
+            accessors: []
+        op: Gt
+        right:
+          kind: Literal
+          value:
+            kind: Integer
+            value: 5
+    let_bindings:
+    - name:
+        name: score
+      value:
+        kind: Literal
+        value:
+          kind: Arithmetic
+          value:
+            left:
+              kind: Var
+              value:
+                name:
+                  name: priority
+                accessors: []
+            op: Add
+            right:
+              kind: Integer
+              value: 5
+    actions:
+    - condition: null
+      action_name:
+        name: flag_priority
+      params:
+      - key:
+          name: level
+        value:
+          kind: String
+          value: high
+      - key:
+          name: score
+        value:
+          kind: Var
+          value:
+            name:
+              name: score
+            accessors: []
+    - condition:
+        kind: Binary
+        value:
+          left:
+            kind: Var
+            value:
+              name:
+                name: score
+              accessors: []
+          op: Gt
+          right:
+            kind: Literal
+            value:
+              kind: Integer
+              value: 12
+      action_name:
+        name: page_oncall
+      params: []
+    captures:
+    - fact:
+        value: urgent_message
+      category:
+        name: alerts
+      tags:
+      - kind: String
+        value: urgent
+      - kind: String
+        value: priority
+- kind: Constraint
+  value:
+    name:
+      name: no_empty_response
+    scope:
+      name: response
+    phase:
+    - name: pre_send
+    trait_name: null
+    weight: null
+    prompt: null
+    when: null
+    require:
+      kind: Binary
+      value:
+        left:
+          kind: Call
+          value:
+            name:
+              name: len
+            args:
+            - kind: Var
+              value:
+                name:
+                  name: response
+                accessors: []
+        op: Gt
+        right:
+          kind: Literal
+          value:
+            kind: Integer
+            value: 0
+    severity: Error
+    message:
+      value: Empty responses are never acceptable
+- kind: Constraint
+  value:
+    name:
+      name: bounded_turns
+    scope: null
+    phase: []
+    trait_name: null
+    weight: null
+    prompt: null
+    when:
+      kind: Binary
+      value:
+        left:
+          kind: Var
+          value:
+            name:
+              name: turns
+            accessors: []
+        op: Gt
+        right:
+          kind: Literal
+          value:
+            kind: Integer
+            value: 0
+    require:
+      kind: Binary
+      value:
+        left:
+          kind: Var
+          value:
+            name:
+              name: turns
+            accessors: []
+        op: Lte
+        right:
+          kind: Literal
+          value:
+            kind: Integer
+            value: 200
+    severity: Warning
+    message:
+      value: Conversation exceeds recommended turn budget

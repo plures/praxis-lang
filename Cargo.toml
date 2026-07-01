@@ -32,3 +32,7 @@ pest_derive = "2.8"
 # JSON-Schema generation for the px-ast projection (M4). The committed
 # schema/px.schema.json is emitted from these derives and CI-drift-gated.
 schemars = "0.8"
+# YAML authoring surface (M5, P4). Deserializes to the SAME px-ast as the .px
+# text surface — a surface, never a second source of truth. serde_yaml drives
+# the existing px-ast serde derives (M4 kind-tagged enums, span dropped).
+serde_yaml = "0.9"
