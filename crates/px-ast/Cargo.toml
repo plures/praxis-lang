@@ -1,0 +1,11 @@
+﻿[package]
+name = "px-ast"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Canonical AST for the .px Praxis Intent Language. The language spec: if a construct is not represented here, it does not exist in the language."
+
+[dependencies]

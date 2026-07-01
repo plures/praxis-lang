@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/px-ast",
+    "crates/px-grammar-gen",
+    "crates/px-grammar",
+    "crates/px-schema",
+    "crates/px-schema-derive",
+    "crates/px-compiler",
+    "crates/px-eval",
+    "crates/px-yaml",
+    "crates/px-napi",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/plures/praxis-lang"
+authors = ["Plures"]
+rust-version = "1.85"
+
+# Single source of truth for the .px Praxis Intent Language.
+# Crate layout per docs/epic/ADR-praxis-lang-single-source-of-truth.md §3.2.
+# NOTE: M1 = empty-but-buildable skeleton. Real code lands in M3+.
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

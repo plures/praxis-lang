@@ -1,0 +1,16 @@
+[package]
+name = "px-napi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "NAPI-RS bindings for the .px Praxis Intent Language (Node/TS consumers)."
+
+# NOTE (epic M1): kept as a plain buildable stub. The NAPI-RS build wiring
+# (cdylib crate-type + napi/napi-derive/napi-build deps + published TS package)
+# lands in milestone M5 per docs/epic/PRAXIS-LANG-TRACKER.md, so the M1
+# skeleton stays dependency-free and builds green everywhere.
+
+[dependencies]

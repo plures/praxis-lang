@@ -1,0 +1,15 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# NAPI / Node
+node_modules/
+*.node
+dist/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build-test:
+    name: build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Format check
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Build
+        run: cargo build --workspace --all-targets
+      - name: Test
+        run: cargo test --workspace
+
+  verify-grammar:
+    name: verify-grammar (placeholder)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Verify grammar is regenerated from px-ast (drift gate)
+        # PLACEHOLDER (epic M1): becomes a real regenerate-and-diff gate in M3/M4.
+        # It will run px-grammar-gen, regenerate grammar.pest, and fail if the
+        # committed grammar differs from the regenerated output (ADR-0021 /
+        # C-DRIFT-001). For now it just asserts the generator crate builds.
+        run: cargo build -p px-grammar-gen -p px-grammar
+
+  verify-schema:
+    name: verify-schema (placeholder)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      - name: Verify schema is a current projection of px-ast (drift gate)
+        # PLACEHOLDER (epic M1): becomes a real regenerate-and-diff gate in M4.
+        # It will regenerate schema/px.schema.json (+ px.schema.px) from px-ast
+        # via schemars and fail if the committed schema differs (C-DRIFT-001).
+        # For now it just asserts the schema crate builds.
+        run: cargo build -p px-schema -p px-schema-derive

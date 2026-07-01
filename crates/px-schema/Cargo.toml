@@ -1,0 +1,11 @@
+﻿[package]
+name = "px-schema"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Schema types and JSON-Schema emitter for .px. The schema is a projection of px-ast, regenerated on every release."
+
+[dependencies]
