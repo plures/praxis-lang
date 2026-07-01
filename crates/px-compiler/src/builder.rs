@@ -390,7 +390,25 @@ fn build_expr(pair: Pair<'_>) -> R<Expr> {
         }
         Rule::additive => fold_left(pair, add_binop),
         Rule::multiplicative => fold_left(pair, mul_binop),
-        Rule::power => fold_left(pair, |_| Ok(BinOp::Pow)),
+        // `power = { unary ~ ("^" ~ unary)* }` — the `^` is a LITERAL (no pair),
+        // so inner pairs are operands only. Fold them with Pow (right-assoc).
+        Rule::power => {
+            let operands = pair.into_inner().collect::<Vec<_>>();
+            if operands.is_empty() {
+                return Err(CompileError::internal("power: no operands"));
+            }
+            // Right-associative: a ^ b ^ c == a ^ (b ^ c).
+            let mut iter = operands.into_iter().rev();
+            let mut acc = build_expr(iter.next().unwrap())?;
+            for base in iter {
+                acc = Expr::Binary {
+                    left: Box::new(build_expr(base)?),
+                    op: BinOp::Pow,
+                    right: Box::new(acc),
+                };
+            }
+            Ok(acc)
+        }
         Rule::unary => {
             let inner = next(&mut pair.into_inner(), "unary", "neg/not/atom")?;
             build_expr(inner)
@@ -824,7 +842,7 @@ fn build_action_stmt(pair: Pair<'_>) -> R<ActionStmt> {
     match inner.as_rule() {
         Rule::simple_action => build_simple_action(inner, None),
         Rule::conditional_action => {
-            let mut it = inner.into_inner();
+            let mut it = inner.into_inner().filter(|p| p.as_rule() != Rule::kw_if);
             let cond = next(&mut it, "conditional_action", "expr")?;
             let cond_expr = build_expr(cond)?;
             let simple = next(&mut it, "conditional_action", "simple_action")?;
@@ -2161,7 +2179,24 @@ fn build_code_expr(pair: Pair<'_>) -> R<CodeExpr> {
         }
         Rule::code_additive => code_fold(pair, add_binop),
         Rule::code_multiplicative => code_fold(pair, mul_binop),
-        Rule::code_power => code_fold(pair, |_| Ok(BinOp::Pow)),
+        // `code_power = { code_unary ~ ("^" ~ code_unary)* }` — `^` is literal
+        // (no pair); fold operands with Pow (right-associative).
+        Rule::code_power => {
+            let operands = pair.into_inner().collect::<Vec<_>>();
+            if operands.is_empty() {
+                return Err(CompileError::internal("code_power: no operands"));
+            }
+            let mut iter = operands.into_iter().rev();
+            let mut acc = build_code_expr(iter.next().unwrap())?;
+            for base in iter {
+                acc = CodeExpr::Binary {
+                    left: Box::new(build_code_expr(base)?),
+                    op: BinOp::Pow,
+                    right: Box::new(acc),
+                };
+            }
+            Ok(acc)
+        }
         Rule::code_unary => {
             let inner = next(&mut pair.into_inner(), "code_unary", "inner")?;
             build_code_expr(inner)

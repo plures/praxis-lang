@@ -9,3 +9,6 @@ rust-version.workspace = true
 description = "Expression evaluator and constraint-engine primitives for .px."
 
 [dependencies]
+px-ast = { path = "../px-ast" }
+px-compiler = { path = "../px-compiler" }
+serde_json = { workspace = true }

@@ -170,6 +170,11 @@ dependencies = [
 [[package]]
 name = "px-eval"
 version = "0.0.0"
+dependencies = [
+ "px-ast",
+ "px-compiler",
+ "serde_json",
+]
 
 [[package]]
 name = "px-grammar"
