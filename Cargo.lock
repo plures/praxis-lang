@@ -161,6 +161,11 @@ dependencies = [
 [[package]]
 name = "px-compiler"
 version = "0.0.0"
+dependencies = [
+ "pest",
+ "px-ast",
+ "px-grammar",
+]
 
 [[package]]
 name = "px-eval"
