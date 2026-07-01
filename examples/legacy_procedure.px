@@ -1,0 +1,43 @@
+// legacy_procedure.px
+// A v1 (legacy) step-list procedure exercising the full control-flow surface:
+// trigger clause, params, define, call-with-output, if/else, for, loop, match,
+// try/catch, parallel, emit, return.
+// Exercises: procedure (legacy) with trigger + params + step_list variety.
+
+procedure handle_inbound:
+  trigger: on_write("inbound")
+  params: [$message, $context]
+  given: "Process an incoming message end to end"
+  define $intent = "unknown"
+  classify_intent $message -> $intent
+  if $intent == "urgent":
+    notify_oncall $message
+    emit channel: "alerts" body: $message
+  else:
+    enqueue $message
+  end
+  for $item in $context:
+    inspect $item
+  end
+  loop over $context as entry key_as idx -> $results:
+    score entry -> $s
+  end
+  match:
+    $intent == "question" -> answer
+    $intent == "command" -> execute
+    _ -> ignore
+  end
+  try retry 3 delay 100 ms backoff exponential:
+    persist $message
+  catch:
+    log_failure $message
+  end
+  parallel -> $out:
+    branch summarize:
+      summarize $message
+    end
+    branch embed retry 2:
+      embed $message
+    end
+  end
+  return $intent
