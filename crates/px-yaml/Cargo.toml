@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "px-yaml"
 version.workspace = true
 edition.workspace = true
@@ -9,3 +9,12 @@ rust-version.workspace = true
 description = "YAML authoring surface for .px, round-tripping through px-ast. Not a second source of truth."
 
 [dependencies]
+px-ast = { path = "../px-ast" }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+# ast_eq compares the canonical serde encoding of two documents (most px-ast
+# nodes intentionally do not derive PartialEq), so serde_json is a real dep.
+serde_json = { workspace = true }
+
+[dev-dependencies]
+px-compiler = { path = "../px-compiler" }

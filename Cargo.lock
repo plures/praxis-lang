@@ -224,6 +224,13 @@ dependencies = [
 [[package]]
 name = "px-yaml"
 version = "0.0.0"
+dependencies = [
+ "px-ast",
+ "px-compiler",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
 
 [[package]]
 name = "quote"
