@@ -182,15 +182,11 @@ fn variant_kind_const(obj: &SchemaObject) -> Option<String> {
     let ov = obj.object.as_ref()?;
     let kind = ov.properties.get("kind")?;
     if let Schema::Object(ko) = kind {
-        if let Some(c) = &ko.const_value {
-            if let serde_json::Value::String(s) = c {
-                return Some(s.clone());
-            }
+        if let Some(serde_json::Value::String(s)) = &ko.const_value {
+            return Some(s.clone());
         }
-        if let Some(vals) = string_enum_values(ko) {
-            if let Some(first) = vals.into_iter().next() {
-                return Some(first);
-            }
+        if let Some(first) = string_enum_values(ko).and_then(|v| v.into_iter().next()) {
+            return Some(first);
         }
     }
     None
