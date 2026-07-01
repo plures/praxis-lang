@@ -21,10 +21,7 @@ fn main() {
                 eprintln!("px-grammar-gen: failed to write {path}: {e}");
                 std::process::exit(1);
             }
-            eprintln!(
-                "px-grammar-gen: wrote {} bytes to {path}",
-                grammar.as_bytes().len()
-            );
+            eprintln!("px-grammar-gen: wrote {} bytes to {path}", grammar.len());
         }
         None => {
             // Print raw UTF-8 bytes to stdout (avoids lossy re-encode).
