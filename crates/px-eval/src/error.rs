@@ -1,9 +1,10 @@
 //! Evaluation error type.
 //!
 //! Ported from `praxis-native::px::eval::EvalError` (the canonical, cleaner
-//! evaluator), extended with a real [`EvalError::Unsupported`] variant so any
-//! construct that is not yet evaluable fails *honestly* (C-NOSTUB-001) rather
-//! than silently returning a placeholder.
+//! evaluator). Every variant is really constructed on a real failure path —
+//! there is no catch-all placeholder. Constructs this crate does not evaluate
+//! this wave (v2 code blocks) are *absent from the API surface* rather than
+//! represented by a dead "unsupported" error (C-NOSTUB-001, honest-absence form).
 
 use std::fmt;
 
@@ -18,11 +19,8 @@ pub enum EvalError {
     UnknownFunction(String),
     /// A registered function returned an error.
     FunctionError(String),
-    /// A type mismatch in an operation (e.g. adding a list to an int).
+    /// A type mismatch in an operation (e.g. negating a list).
     TypeError(String),
-    /// The construct/expression form is recognized but not yet evaluable.
-    /// Names the form so gaps are locatable and honest — never a silent stub.
-    Unsupported(String),
 }
 
 impl fmt::Display for EvalError {
@@ -33,7 +31,6 @@ impl fmt::Display for EvalError {
             EvalError::UnknownFunction(name) => write!(f, "unknown function: {name}"),
             EvalError::FunctionError(msg) => write!(f, "function error: {msg}"),
             EvalError::TypeError(msg) => write!(f, "type error: {msg}"),
-            EvalError::Unsupported(what) => write!(f, "unsupported for evaluation: {what}"),
         }
     }
 }

@@ -14,17 +14,18 @@
 //! - [`eval_constraint`] — evaluate a [`px_ast::ConstraintDecl`] →
 //!   [`ConstraintOutcome`] (satisfied / violated / not-applicable).
 //! - [`FunctionRegistry`] + [`PureFunctionRegistry`] — the function boundary.
-//! - [`EvalError`] — evaluation errors (including honest `Unsupported`).
+//! - [`EvalError`] — evaluation errors (parse / type / division-by-zero /
+//!   unknown-function / function-error).
 //!
 //! ## Coverage (C-NOSTUB-001)
 //!
 //! v1 expressions (literals, vars, dotted/bracket access, arithmetic,
 //! comparison, logic, string-concat, inline-if, match, function calls) are
 //! **really evaluated**. Rules and constraints are evaluated over those v1
-//! expressions. v2 code blocks (`CodeExpr`/`CodeBlock`) are **not** executed by
-//! this crate — calling into them returns a real [`EvalError::Unsupported`]; a
-//! procedure runtime is out of scope for M3 wave 2 (documented in
-//! `PXLANG-M3W2-RESULT.md`).
+//! expressions. v2 code blocks (`px_ast::CodeExpr` / `px_ast::CodeBlock`) are
+//! **absent from this crate's API surface** — there is no entry point that
+//! accepts them, so nothing pretends to evaluate them. A v2 procedure runtime
+//! is out of scope for M3 wave 2 (documented in `PXLANG-M3W2-RESULT.md`).
 
 mod error;
 mod eval;
