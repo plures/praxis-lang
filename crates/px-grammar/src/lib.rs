@@ -99,8 +99,7 @@ mod tests {
         use pest::Parser;
         // The derived parser must accept a trivial well-formed document.
         let src = "import core::memory\n";
-        let pairs =
-            PxParser::parse(Rule::document, src).expect("minimal document should parse");
+        let pairs = PxParser::parse(Rule::document, src).expect("minimal document should parse");
         assert!(pairs.count() > 0, "expected at least the document pair");
     }
 
