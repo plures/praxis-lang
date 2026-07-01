@@ -62,8 +62,20 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
       - name: Verify schema is a current projection of px-ast (drift gate)
-        # PLACEHOLDER (epic M1): becomes a real regenerate-and-diff gate in M4.
-        # It will regenerate schema/px.schema.json (+ px.schema.px) from px-ast
-        # via schemars and fail if the committed schema differs (C-DRIFT-001).
-        # For now it just asserts the schema crate builds.
-        run: cargo build -p px-schema -p px-schema-derive
+        # Real regenerate-and-diff gate (epic M4, ADR §M4 / C-DRIFT-001):
+        # schema/px.schema.json and schema/px.schema.px are GENERATED projections
+        # of px-ast (via schemars). Regenerate them into a temp dir and fail if
+        # the committed artifacts drift from the freshly generated output.
+        # (Job display name kept identical so branch protection stays satisfied.)
+        run: |
+          gen="$(mktemp -d)"
+          cargo run -q -p px-schema -- "$gen"
+          fail=0
+          for f in px.schema.json px.schema.px; do
+            if ! diff -u "schema/$f" "$gen/$f"; then
+              echo "::error::schema/$f is stale — regenerate with: cargo run -p px-schema -- schema (or scripts/regen-schema.ps1)"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "schema/px.schema.json and schema/px.schema.px match px-schema output (no drift)."
