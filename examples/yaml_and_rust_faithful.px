@@ -1,0 +1,37 @@
+# yaml_and_rust_faithful.px
+# Regression fixture for the .px-consolidation grammar fixes (2026-07-06).
+# Exercises the four Rust/YAML-faithful features that were added/repaired so the
+# `all_examples_parse` gate keeps them working:
+#   1. YAML plain scalars as config VALUES (unquoted, may contain - . /)
+#   2. YAML plain scalars as config KEYS (hyphenated, e.g. pluresdb-node)
+#   3. String escape sequences in strings (\" \' \\ \n) - Rust + YAML double-quoted
+#   4. 3-level (and deeper) nested YAML mappings in config blocks
+
+config surface_map:
+  default_pr_mode: github-pr
+  version_tag: v1.2.3
+  artifact_path: crates/px-grammar/src/grammar.pest
+  pluresdb-node:
+    role: "native NAPI binding"
+    note: "exposes pxEvaluate(); banned marker example: panic!(\"not implemented\")"
+    exposes: ["storage", "vector_search", "praxis_evaluate"]
+  pluresLM-wrapper:
+    role: "TypeScript wrapper"
+    exposes: ["storage", "vector_search"]
+  policy:
+    honest_forms:
+      absence:
+        rule: "not declared, registered, or exported"
+        why: "absence is honest; a hollow shell is a lie"
+      real_unavailable:
+        rule: "returns a real handled CapabilityUnavailable error"
+        why: "feature-detection, not a stub"
+
+# A constraint using contains([...], x) - the Rust-idiom membership check that
+# replaced the non-standard `IN [...]` pseudo-SQL operator.
+constraint evidence_source_must_be_grounded:
+  scope: verification
+  when: conclusion.is_boundary_claim == true
+  require: contains(["disk_bytes", "built_binary_run", "git_clone"], conclusion.evidence_source)
+  severity: error
+  message: "A boundary claim must cite a ground-truth evidence source, not recollection."

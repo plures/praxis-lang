@@ -49,7 +49,33 @@ fn unquote(raw: &str) -> String {
         let first = bytes[0];
         let last = bytes[bytes.len() - 1];
         if (first == b'"' && last == b'"') || (first == b'\'' && last == b'\'') {
-            return raw[1..raw.len() - 1].to_string();
+            // Strip the surrounding quotes, then process escape sequences (Rust/YAML
+            // double-quoted-scalar faithful: \" \' \\ \n \t \r). The grammar now permits
+            // backslash-escaped quotes inside strings, so unescaping happens here.
+            let inner = &raw[1..raw.len() - 1];
+            let mut out = String::with_capacity(inner.len());
+            let mut chars = inner.chars();
+            while let Some(c) = chars.next() {
+                if c == '\\' {
+                    match chars.next() {
+                        Some('"') => out.push('"'),
+                        Some('\'') => out.push('\''),
+                        Some('\\') => out.push('\\'),
+                        Some('n') => out.push('\n'),
+                        Some('t') => out.push('\t'),
+                        Some('r') => out.push('\r'),
+                        Some(other) => {
+                            // Unknown escape: preserve backslash + char verbatim.
+                            out.push('\\');
+                            out.push(other);
+                        }
+                        None => out.push('\\'),
+                    }
+                } else {
+                    out.push(c);
+                }
+            }
+            return out;
         }
     }
     raw.to_string()
@@ -226,6 +252,8 @@ fn build_value(pair: Pair<'_>) -> R<Value> {
             build_value(inner)
         }
         Rule::string => Ok(Value::String(unquote(pair.as_str()))),
+        // YAML plain scalar (unquoted string, e.g. github-pr). Not quoted -> take verbatim.
+        Rule::plain_scalar => Ok(Value::String(pair.as_str().trim().to_string())),
         Rule::float => Ok(Value::Float(parse_f64(&pair)?)),
         Rule::integer => Ok(Value::Integer(parse_i64(&pair)?)),
         Rule::boolean => Ok(Value::Boolean(pair.as_str() == "true")),
@@ -718,14 +746,28 @@ fn build_config(pair: Pair<'_>) -> R<ConfigDecl> {
     })
 }
 
-// config_entry = { ident ~ ":" ~ (config_nested | config_value) ~ NEWLINE? }
-// config_kv    = { ident ~ ":" ~ (config_nested | config_value) }
+// config_entry = { config_key ~ ":" ~ (config_nested | config_value) ~ NEWLINE? }
+// config_kv    = { config_key ~ ":" ~ (config_nested | config_value) }
 fn build_config_entry(pair: Pair<'_>) -> R<ConfigEntry> {
     let mut it = pair.into_inner();
-    let key = ident_of(next(&mut it, "config_entry", "key")?);
+    let key = config_key_of(next(&mut it, "config_entry", "key")?);
     let val = next(&mut it, "config_entry", "value")?;
     let value = build_config_value(val)?;
     Ok(ConfigEntry { key, value })
+}
+
+// A config mapping key is `config_key = { ident | plain_scalar }`. Unwrap to the inner
+// token and build an Ident from its text (plain scalars are unquoted; idents are bare),
+// preserving the span for diagnostics. Mirrors `ident_of` for the wrapped case.
+fn config_key_of(pair: Pair<'_>) -> Ident {
+    let tok = if pair.as_rule() == Rule::config_key {
+        let mut inner = pair.into_inner();
+        next(&mut inner, "config_key", "key token").unwrap_or_else(|_| unreachable!("config_key always wraps one token"))
+    } else {
+        pair
+    };
+    let span = span_of(&tok);
+    Ident::with_span(tok.as_str().trim().to_string(), span)
 }
 
 fn build_config_value(pair: Pair<'_>) -> R<ConfigValue> {

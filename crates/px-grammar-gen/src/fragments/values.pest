@@ -6,7 +6,7 @@
 value = { string | float | integer | boolean | list_val | map_val | call_expr | arith_val | var_ref | dotted_ident | paren_expr | ident }
 paren_expr = { "(" ~ expr ~ ")" }
 arith_val = { (call_expr | var_ref | integer | float) ~ add_op ~ (call_expr | var_ref | integer | float | paren_expr) }
-string = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" | "'" ~ (!"'" ~ ANY)* ~ "'" }
+string = @{ "\"" ~ ("\\" ~ ANY | !"\"" ~ ANY)* ~ "\"" | "'" ~ ("\\" ~ ANY | !"'" ~ ANY)* ~ "'" }
 integer = @{ "-"? ~ ASCII_DIGIT+ }
 float = @{ "-"? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 boolean = { "true" | "false" }

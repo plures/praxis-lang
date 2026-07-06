@@ -19,10 +19,21 @@ entity_type_expr = { enum_type | list_type | optional_type | base_type | ident_t
 // === Config (static key-value blocks, nested) ===
 config_decl = { "config" ~ ident ~ ":" ~ NEWLINE ~ config_body }
 config_body = { (config_entry ~ NEWLINE?)+ }
-config_entry = { ident ~ ":" ~ (config_nested | config_value) ~ NEWLINE? }
-config_nested = { NEWLINE ~ (config_kv ~ NEWLINE)+ }
-config_kv = { ident ~ ":" ~ (config_nested | config_value) }
-config_value = { list_val | float | integer | string | boolean }
+config_entry = { config_key ~ ":" ~ (config_nested | config_value) ~ NEWLINE? }
+config_nested = { NEWLINE ~ (config_kv ~ NEWLINE?)+ }
+config_kv = { config_key ~ ":" ~ (config_nested | config_value) }
+// config_key: a mapping key. YAML allows plain-scalar keys (e.g. pluresdb-node), not just
+// bare idents. plain_scalar is a SUPERSET of ident and must come FIRST: pest has no
+// backtracking across a successful alternative, so trying `ident` first would match the
+// `pluresdb` prefix of `pluresdb-node` and then choke on `-node`. plain_scalar matches the
+// whole hyphenated key. (A bare ident is still a valid plain_scalar, so nothing is lost.)
+config_key = { plain_scalar }
+config_value = { list_val | float | integer | string | boolean | plain_scalar }
+// YAML plain scalar: an unquoted scalar string (e.g. github-pr, design_review, v1.2).
+// Faithful to YAML 1.2 plain-style scalars in mapping-value position. Placed LAST in
+// config_value so quoted strings / numbers / booleans still match first; only a bareword
+// with hyphens/dots that is none of those falls through here. Terminated by NEWLINE.
+plain_scalar = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-" | "." | "/")* }
 
 // === Facts (typed structures, like entity but lighter) ===
 fact_decl = { "fact" ~ ident ~ ":" ~ NEWLINE ~ field_list }
