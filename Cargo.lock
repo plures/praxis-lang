@@ -397,6 +397,7 @@ dependencies = [
  "px-ast",
  "px-compiler",
  "px-eval",
+ "px-yaml",
  "serde_json",
 ]
 

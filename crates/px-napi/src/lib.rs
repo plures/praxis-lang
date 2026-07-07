@@ -18,6 +18,11 @@
 //!   applicable, with severity + message on violation).
 //! - [`px_ast_version`] — the `px-ast` crate version the addon was built
 //!   against (so JS callers can assert engine/schema alignment).
+//! - [`from_yaml`] — deserialize a YAML *surface* string (the serde encoding of
+//!   the AST) back into a [`px_ast::PxDocument`] via `px-yaml`, returned as JSON.
+//! - [`parse_config_yaml`] — parse a raw `.px` config-block body (a plain YAML
+//!   mapping) via `serde_yaml`, returning a JSON object. This is the structural
+//!   fix for `pest`'s indentation-blindness on nested `config` blocks.
 //!
 //! JSON is used as the boundary type because the AST and evaluation results are
 //! already `serde`-serializable and JSON is the natural N-API interchange for
@@ -118,6 +123,47 @@ pub fn check_constraints(src: String, vars_json: String) -> napi::Result<String>
 #[napi]
 pub fn px_ast_version() -> String {
     px_ast::PX_AST_VERSION.to_string()
+}
+
+/// Deserialize a YAML string into the canonical AST, returned as JSON.
+///
+/// Binds `px_yaml::from_yaml` (ADR pillar P4 — "YAML is a surface over the
+/// canonical `px-ast`, not a second source of truth"). The `src` must be a YAML
+/// spelling of the same kind-tagged shape the AST serde encoding produces (the
+/// output of [`to_yaml`]); it reconstructs the identical [`px_ast::PxDocument`]
+/// that the `.px` text front end would, and is serialized back to JSON here so
+/// TS callers see the exact canonical AST shape.
+///
+/// Throws (JS `Error`) if the YAML does not deserialize into a `PxDocument`.
+#[napi]
+pub fn from_yaml(src: String) -> napi::Result<String> {
+    let doc = px_yaml::from_yaml(&src)
+        .map_err(|e| napi::Error::from_reason(format!("px-yaml deserialize error: {e}")))?;
+    serde_json::to_string(&doc)
+        .map_err(|e| napi::Error::from_reason(format!("AST serialize error: {e}")))
+}
+
+/// Parse a raw `.px` **config-block body** (a plain YAML mapping) into a JSON
+/// object, using a real indentation-aware YAML parser.
+///
+/// Binds `px_yaml::config_value_from_yaml`. This is the structural fix for the
+/// `pest` front end's indentation-blindness on `config` blocks: `pest` can
+/// silently absorb a level-2 sibling as a *child* of the preceding entry (wrong
+/// tree, no error), whereas config data is exactly a YAML mapping and so is
+/// parsed correctly by `serde_yaml`. Consumers that need a structurally-correct
+/// nested config (e.g. a JS derivation-integrity reader) pass the dedented
+/// block body here instead of re-deriving structure from `.px` text.
+///
+/// `src` is the mapping body only — the lines *under* `config <name>:`, dedented
+/// to column 0. Returns the mapping as a JSON object string.
+///
+/// Throws (JS `Error`) if the YAML body does not parse.
+#[napi]
+pub fn parse_config_yaml(src: String) -> napi::Result<String> {
+    let value = px_yaml::config_value_from_yaml(&src)
+        .map_err(|e| napi::Error::from_reason(format!("px-yaml config parse error: {e}")))?;
+    serde_json::to_string(&value)
+        .map_err(|e| napi::Error::from_reason(format!("config serialize error: {e}")))
 }
 
 /// Parse the JSON variable map into the `HashMap<String, serde_json::Value>`

@@ -20,6 +20,7 @@ napi-derive = "3"
 px-ast = { path = "../px-ast" }
 px-compiler = { path = "../px-compiler" }
 px-eval = { path = "../px-eval" }
+px-yaml = { path = "../px-yaml" }
 serde_json = { workspace = true }
 
 [build-dependencies]

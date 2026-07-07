@@ -589,5 +589,7 @@ if (!nativeBinding) {
 module.exports = nativeBinding
 module.exports.checkConstraints = nativeBinding.checkConstraints
 module.exports.evaluate = nativeBinding.evaluate
+module.exports.fromYaml = nativeBinding.fromYaml
 module.exports.parse = nativeBinding.parse
+module.exports.parseConfigYaml = nativeBinding.parseConfigYaml
 module.exports.pxAstVersion = nativeBinding.pxAstVersion

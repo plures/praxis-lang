@@ -26,6 +26,20 @@ export declare function checkConstraints(src: string, varsJson: string): string
 export declare function evaluate(expr: string, varsJson: string): string
 
 /**
+ * Deserialize a YAML string into the canonical AST, returned as JSON.
+ *
+ * Binds `px_yaml::from_yaml` (ADR pillar P4 — "YAML is a surface over the
+ * canonical `px-ast`, not a second source of truth"). The `src` must be a YAML
+ * spelling of the same kind-tagged shape the AST serde encoding produces (the
+ * output of [`to_yaml`]); it reconstructs the identical [`px_ast::PxDocument`]
+ * that the `.px` text front end would, and is serialized back to JSON here so
+ * TS callers see the exact canonical AST shape.
+ *
+ * Throws (JS `Error`) if the YAML does not deserialize into a `PxDocument`.
+ */
+export declare function fromYaml(src: string): string
+
+/**
  * Parse a `.px` source string into the canonical AST, returned as JSON.
  *
  * Delegates to `px_compiler::parse` (the real front end) and serializes the
@@ -36,6 +50,25 @@ export declare function evaluate(expr: string, varsJson: string): string
  * Throws (JS `Error`) if the source does not parse.
  */
 export declare function parse(src: string): string
+
+/**
+ * Parse a raw `.px` **config-block body** (a plain YAML mapping) into a JSON
+ * object, using a real indentation-aware YAML parser.
+ *
+ * Binds `px_yaml::config_value_from_yaml`. This is the structural fix for the
+ * `pest` front end's indentation-blindness on `config` blocks: `pest` can
+ * silently absorb a level-2 sibling as a *child* of the preceding entry (wrong
+ * tree, no error), whereas config data is exactly a YAML mapping and so is
+ * parsed correctly by `serde_yaml`. Consumers that need a structurally-correct
+ * nested config (e.g. a JS derivation-integrity reader) pass the dedented
+ * block body here instead of re-deriving structure from `.px` text.
+ *
+ * `src` is the mapping body only — the lines *under* `config <name>:`, dedented
+ * to column 0. Returns the mapping as a JSON object string.
+ *
+ * Throws (JS `Error`) if the YAML body does not parse.
+ */
+export declare function parseConfigYaml(src: string): string
 
 /** The `px-ast` crate version this addon was built against. */
 export declare function pxAstVersion(): string

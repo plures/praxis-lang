@@ -90,6 +90,48 @@ pub fn from_yaml(src: &str) -> Result<PxDocument, YamlError> {
     serde_yaml::from_str(src).map_err(YamlError::Deserialize)
 }
 
+/// Parse a raw `.px` **config-block body** (a plain YAML mapping) into a
+/// `serde_json::Value`, using `serde_yaml` so nesting is resolved by a real
+/// indentation-aware YAML parser.
+///
+/// ## Why this exists (the pest indentation-blindness fix)
+///
+/// The `px-compiler` front end parses `config` blocks with a `pest` grammar,
+/// and `pest` is indentation-*blind*: for a 3-level config, a level-2 sibling
+/// can be silently absorbed as a *child* of the preceding level-2 entry (wrong
+/// tree, no error). Config data is exactly a YAML mapping, so the correct parse
+/// is the one `serde_yaml` produces. Consumers that need a structurally-correct
+/// nested config (e.g. a JS derivation-integrity reader) parse the block body
+/// through this function instead of re-deriving structure from `.px` text.
+///
+/// This is the concrete realization of "YAML is a surface over `.px`": the same
+/// data, spelled as YAML, parsed by the YAML parser. It does not introduce a
+/// second source of truth — it removes a parser deficiency for the config case.
+///
+/// `src` is the mapping body only (the lines *under* `config <name>:`), already
+/// dedented to column 0, e.g.:
+/// ```text
+/// law: never assume
+/// peer_discovery:
+///   pattern: fire_and_forget
+///   zero_peers: normal
+/// cron_sweeps:
+///   must_be: idempotent
+/// ```
+///
+/// # Errors
+/// [`YamlError::Deserialize`] on a YAML syntax error, or [`YamlError::Serialize`]
+/// in the (practically unreachable) case that the parsed YAML value cannot be
+/// projected into the JSON data model.
+pub fn config_value_from_yaml(src: &str) -> Result<serde_json::Value, YamlError> {
+    let yaml: serde_yaml::Value = serde_yaml::from_str(src).map_err(YamlError::Deserialize)?;
+    // serde_yaml::Value -> serde_json::Value: both are serde data models, so for
+    // config data (strings, numbers, bools, sequences, string-keyed maps) this is
+    // a total, lossless projection. The only failure mode is a non-string map key,
+    // which config blocks never produce.
+    serde_yaml::from_value::<serde_json::Value>(yaml).map_err(YamlError::Deserialize)
+}
+
 /// Structural equality of two [`PxDocument`]s via their canonical serde
 /// encoding.
 ///
