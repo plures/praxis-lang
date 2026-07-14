@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "px-grammar"
 version.workspace = true
 edition.workspace = true
