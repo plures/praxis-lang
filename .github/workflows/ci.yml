@@ -11,6 +11,14 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  no-bom:
+    name: no UTF-8 BOM in Cargo.toml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for BOM in Cargo.toml manifests
+        run: bash scripts/check-no-bom.sh
+
   build-test:
     name: build + test
     runs-on: ubuntu-latest
