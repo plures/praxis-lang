@@ -31,17 +31,36 @@ fn siblings_are_not_absorbed() {
         "expected 3 top-level siblings (law, peer_discovery, cron_sweeps), got {:?}",
         obj.keys().collect::<Vec<_>>()
     );
-    assert!(obj.contains_key("cron_sweeps"), "cron_sweeps must be a top-level sibling");
+    assert!(
+        obj.contains_key("cron_sweeps"),
+        "cron_sweeps must be a top-level sibling"
+    );
 
     // peer_discovery has exactly its own 2 children — cron_sweeps is NOT absorbed.
-    let pd = obj.get("peer_discovery").and_then(Value::as_object).expect("peer_discovery is a map");
-    assert_eq!(pd.len(), 2, "peer_discovery must have exactly 2 children (pattern, zero_peers)");
-    assert!(!pd.contains_key("cron_sweeps"), "cron_sweeps must NOT be nested under peer_discovery");
+    let pd = obj
+        .get("peer_discovery")
+        .and_then(Value::as_object)
+        .expect("peer_discovery is a map");
+    assert_eq!(
+        pd.len(),
+        2,
+        "peer_discovery must have exactly 2 children (pattern, zero_peers)"
+    );
+    assert!(
+        !pd.contains_key("cron_sweeps"),
+        "cron_sweeps must NOT be nested under peer_discovery"
+    );
 
     // cron_sweeps keeps its own children.
-    let cs = obj.get("cron_sweeps").and_then(Value::as_object).expect("cron_sweeps is a map");
+    let cs = obj
+        .get("cron_sweeps")
+        .and_then(Value::as_object)
+        .expect("cron_sweeps is a map");
     assert_eq!(cs.len(), 2, "cron_sweeps must have exactly 2 children");
-    assert_eq!(cs.get("must_be").and_then(Value::as_str), Some("idempotent"));
+    assert_eq!(
+        cs.get("must_be").and_then(Value::as_str),
+        Some("idempotent")
+    );
 }
 
 /// Scalars, lists, and nested maps all project into the JSON data model.
@@ -64,11 +83,17 @@ fn scalar_list_and_map_shapes() {
     assert_eq!(obj.get("count").and_then(Value::as_i64), Some(3));
     assert_eq!(obj.get("enabled").and_then(Value::as_bool), Some(true));
 
-    let forbid = obj.get("forbid").and_then(Value::as_array).expect("forbid is a list");
+    let forbid = obj
+        .get("forbid")
+        .and_then(Value::as_array)
+        .expect("forbid is a list");
     assert_eq!(forbid.len(), 2);
     assert_eq!(forbid[0].as_str(), Some("await"));
 
-    let nested = obj.get("nested").and_then(Value::as_object).expect("nested is a map");
+    let nested = obj
+        .get("nested")
+        .and_then(Value::as_object)
+        .expect("nested is a map");
     assert_eq!(nested.len(), 2);
 }
 
@@ -77,5 +102,8 @@ fn scalar_list_and_map_shapes() {
 fn malformed_body_errors() {
     // A tab in indentation is invalid YAML.
     let body = "a:\n\tb: 1\n";
-    assert!(config_value_from_yaml(body).is_err(), "malformed YAML must error");
+    assert!(
+        config_value_from_yaml(body).is_err(),
+        "malformed YAML must error"
+    );
 }

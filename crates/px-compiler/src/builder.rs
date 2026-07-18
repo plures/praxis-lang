@@ -762,7 +762,8 @@ fn build_config_entry(pair: Pair<'_>) -> R<ConfigEntry> {
 fn config_key_of(pair: Pair<'_>) -> Ident {
     let tok = if pair.as_rule() == Rule::config_key {
         let mut inner = pair.into_inner();
-        next(&mut inner, "config_key", "key token").unwrap_or_else(|_| unreachable!("config_key always wraps one token"))
+        next(&mut inner, "config_key", "key token")
+            .unwrap_or_else(|_| unreachable!("config_key always wraps one token"))
     } else {
         pair
     };
