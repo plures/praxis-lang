@@ -19,8 +19,8 @@ fn rfc_px() -> PathBuf {
 #[test]
 fn rfc_0001_self_hosts() {
     let path = rfc_px();
-    let src = fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+    let src =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     match px_compiler::parse(&src) {
         Ok(doc) => assert!(
             !doc.statements.is_empty(),
