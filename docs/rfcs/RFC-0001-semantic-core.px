@@ -1,0 +1,119 @@
+// RFC-0001-semantic-core.px
+// Self-hosting specification for the .px semantic-core evolution.
+// This file IS the proof of the self-hosting requirement: it is written in
+// current .px syntax, parses with the current px-compiler, and models the
+// epic it describes. No new syntax is introduced here (RFC-0001 is spec-only).
+//
+// Exercises: config, entity, fact, function, constraint, contract, scenario.
+
+config rfc_0001:
+  title: "Semantic Core Vision"
+  status: "draft"
+  author: "kbristol"
+  workstream: "WS-1"
+  supersedes_scope: "none"
+
+// The irreducible primitives the 12 current constructs lower into.
+entity SemanticPrimitive:
+  prefix: "core"
+  fields:
+    name: string
+    description: string
+    lowers_from: list[string]
+
+// Each current surface construct and the core primitive it lowers to.
+entity LoweringRule:
+  prefix: "lower"
+  fields:
+    construct: string
+    lowers_to: string
+    reversible: bool
+
+fact current_constructs:
+  constructs: list[string]
+  count: int
+
+fact core_primitives:
+  declaration: string
+  assertion: string
+  procedure: string
+  scenario: string
+
+config compatibility_policy:
+  preserve_surface_syntax: true
+  break_existing_files: false
+  deprecation_requires_migration_tool: true
+
+config projection_policy:
+  json_schema_drift_gated: true
+  yaml_roundtrip_gated: true
+  napi_surface_gated: true
+
+config non_goals:
+  graph_native_dev_state: "out_of_scope"
+  git_projection: "out_of_scope"
+  vcs_tooling: "out_of_scope"
+  implementation_changes: "out_of_scope"
+
+function lower(construct: string) -> string:
+  mode: deterministic
+  """Map a current surface construct to its semantic-core primitive."""
+
+function raise(primitive: string) -> string:
+  mode: deterministic
+  """Reconstruct the surface construct from its lowered core form."""
+
+constraint no_breaking_parse:
+  scope: compatibility
+  require: break_existing_files == false
+  severity: error
+  message: "RFC-0001 must not break any existing .px file"
+
+constraint surface_syntax_preserved:
+  scope: compatibility
+  require: preserve_surface_syntax == true
+  severity: error
+  message: "Lowering is internal; surface syntax must be preserved"
+
+constraint projections_stay_gated:
+  scope: projection
+  require: json_schema_drift_gated == true
+  severity: error
+  message: "JSON Schema projection must remain CI drift-gated (ADR-0021 discipline)"
+
+constraint no_implementation_in_rfc:
+  scope: process
+  require: implementation_changes == "out_of_scope"
+  severity: error
+  message: "RFC-0001 is specification-only; no AST/code changes ship in this RFC"
+
+contract lowering_roundtrip:
+  given: "Any current .px construct"
+  when: "Lowered to semantic core and raised back"
+  then: "Produces an identical AST"
+  threshold: 1.0
+  examples:
+    - input: "entity Conversation"
+      expect: "identical_ast"
+    - input: "constraint no_empty_response"
+      expect: "identical_ast"
+
+contract downstream_transparency:
+  given: "A downstream consumer pinned to the current Statement enum"
+  when: "The semantic core is introduced with lowering"
+  then: "The consumer observes no surface or schema change"
+  threshold: 1.0
+  examples:
+    - input: "pluresdb-px consuming px-ast"
+      expect: "no_change"
+    - input: "pares-radix consuming pluresdb-px"
+      expect: "no_change"
+
+scenario verify_self_hosting:
+  given: "This RFC file authored in current .px syntax"
+  setup:
+    define $path = "docs/rfcs/RFC-0001-semantic-core.px"
+  run: parse_px {input: $path}
+  expect:
+    - parse_succeeds {}
+    - NOT error_raised {}
