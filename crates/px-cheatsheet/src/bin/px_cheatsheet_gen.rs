@@ -67,12 +67,18 @@ fn main() -> ExitCode {
 
     if let Some(parent) = out_path.parent() {
         if let Err(e) = std::fs::create_dir_all(parent) {
-            eprintln!("px-cheatsheet-gen: failed to create {}: {e}", parent.display());
+            eprintln!(
+                "px-cheatsheet-gen: failed to create {}: {e}",
+                parent.display()
+            );
             return ExitCode::FAILURE;
         }
     }
     if let Err(e) = std::fs::write(&out_path, doc.as_bytes()) {
-        eprintln!("px-cheatsheet-gen: failed to write {}: {e}", out_path.display());
+        eprintln!(
+            "px-cheatsheet-gen: failed to write {}: {e}",
+            out_path.display()
+        );
         return ExitCode::FAILURE;
     }
     eprintln!("px-cheatsheet-gen: wrote {}", out_path.display());
