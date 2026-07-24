@@ -10,7 +10,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A type expression used in field declarations, params, and return types.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", content = "value")]
 pub enum TypeExpr {
     /// Primitive: `bool`, `int`, `float`, `string`, `duration`
@@ -25,6 +25,14 @@ pub enum TypeExpr {
     Map(Box<TypeExpr>, Box<TypeExpr>),
     /// `enum(a, b, c)`
     Enum(Vec<Ident>),
+    /// RFC-0002: a base/collection type narrowed by a boolean predicate over `value`.
+    /// Scope per RFC-0002 §1: only `Base`, `List`, `Optional`, `Map`, `Enum` may be the
+    /// refined base (no `Named`, no nested `Refined`). The predicate is an ordinary v1
+    /// `Expr` with exactly one free variable bound by convention to `value`.
+    Refined {
+        base: Box<TypeExpr>,
+        predicate: Box<crate::expressions::Expr>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -65,6 +73,9 @@ impl std::fmt::Display for TypeExpr {
                     write!(f, "{}", v)?;
                 }
                 write!(f, ")")
+            }
+            TypeExpr::Refined { base, predicate } => {
+                write!(f, "{} where {:?}", base, predicate)
             }
         }
     }

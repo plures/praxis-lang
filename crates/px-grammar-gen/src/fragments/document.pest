@@ -13,4 +13,5 @@ statement = _{
   | dataflow_procedure_decl
   | procedure_decl
   | scenario_decl
+  | type_alias_decl
 }

@@ -53,6 +53,7 @@ mod tests {
             "procedure_decl",
             "scenario_decl",
             "import_decl",
+            "type_alias_decl",
         ] {
             assert!(g.contains(name), "Missing construct: {}", name);
         }
