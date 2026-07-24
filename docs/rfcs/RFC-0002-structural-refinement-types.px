@@ -1,0 +1,115 @@
+// RFC-0002-structural-refinement-types.px
+// Self-hosting specification for the structural/refinement-types design.
+// Per the RFC's own scope, this file uses ONLY current .px syntax (no `type`/
+// `where`, since those don't exist until the follow-on implementation lands).
+// It models the design's scope, boundaries, and acceptance criteria the same
+// way RFC-0001's companion file modeled the semantic core.
+//
+// Exercises: config, entity, fact, function, constraint, contract, scenario.
+
+config rfc_0002:
+  title: "Structural/Refinement Types (Smallest Slice)"
+  status: "draft"
+  author: "kbristol"
+  workstream: "WS-1"
+  gates_on: "RFC-0001"
+
+// The one new TypeExpr variant this slice proposes.
+entity ProposedTypeVariant:
+  prefix: "tv"
+  fields:
+    name: string
+    wraps: string
+    predicate_arity: int
+
+// The one new surface construct this slice proposes.
+entity ProposedConstruct:
+  prefix: "pc"
+  fields:
+    name: string
+    lowers_to: string
+    reversible: bool
+
+fact refined_variant:
+  name: string
+  wraps: string
+  predicate_arity: int
+
+fact type_alias_construct:
+  name: string
+  lowers_to: string
+  reversible: bool
+
+config scope_boundaries:
+  anonymous_structural_records: "out_of_scope"
+  refinements_on_named_types: "out_of_scope"
+  dependent_cross_field_refinements: "out_of_scope"
+  new_expression_syntax: "out_of_scope"
+  runtime_check_timing_decision: "deferred_to_implementation"
+
+config compatibility_policy:
+  preserve_existing_parse: true
+  break_existing_files: false
+  new_variant_is_additive: true
+
+config downstream_audit_required:
+  pluresdb_px: "exhaustive_match_check"
+  pares_radix: "exhaustive_match_check"
+  pares_agens: "exhaustive_match_check"
+
+function lowers_type_alias(construct: string) -> string:
+  mode: deterministic
+  """Map the proposed `type` construct to its semantic-core primitive (Declaration)."""
+
+constraint no_breaking_parse:
+  scope: compatibility
+  require: break_existing_files == false
+  severity: error
+  message: "RFC-0002 must not change any existing production's syntax"
+
+constraint single_new_variant_only:
+  scope: scope
+  require: new_variant_is_additive == true
+  severity: error
+  message: "This slice adds exactly one TypeExpr variant (Refined) and one construct (TypeAliasDecl)"
+
+constraint no_new_expression_syntax:
+  scope: scope
+  require: scope_boundaries.new_expression_syntax == "out_of_scope"
+  severity: error
+  message: "Refinement predicates reuse v1 Expr verbatim; no new operators or literals"
+
+constraint downstream_audit_binding:
+  scope: process
+  require: downstream_audit_required.pluresdb_px == "exhaustive_match_check"
+  severity: error
+  message: "Follow-on implementation PR must audit exhaustive TypeExpr matches in all three downstream repos before merge"
+
+contract lowering_extends_not_widens:
+  given: "The RFC-0001 four-primitive core (Declaration, Assertion, Procedure, Scenario)"
+  when: "TypeAliasDecl is added as a 13th surface construct"
+  then: "It lowers to the existing Declaration primitive; the core primitive count stays four"
+  threshold: 1.0
+  examples:
+    - input: "type PositiveInt = int where value > 0"
+      expect: "lowers_to_declaration"
+    - input: "type NonEmptyString = string where length(value) > 0"
+      expect: "lowers_to_declaration"
+
+contract smallest_blast_radius:
+  given: "The set of possible structural/refinement-type designs"
+  when: "Scoped per this RFC (named-alias-only, scalar/collection-only, single free variable, no dependent types)"
+  then: "The diff touches exactly one TypeExpr variant and one new construct, with no change to existing constructs"
+  threshold: 1.0
+  examples:
+    - input: "entity/fact/config/function/import/constraint/rule/contract/procedure/trigger/scenario"
+      expect: "unchanged"
+
+scenario verify_self_hosting:
+  given: "This RFC file authored in current .px syntax (no type/where sugar)"
+  setup:
+    define $path = "docs/rfcs/RFC-0002-structural-refinement-types.px"
+  run: parse_px {input: $path}
+  expect:
+    - parse_succeeds {}
+    - NOT error_raised {}
