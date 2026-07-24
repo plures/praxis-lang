@@ -354,6 +354,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "px-cheatsheet"
+version = "0.0.0"
+dependencies = [
+ "px-schema",
+ "schemars",
+]
+
+[[package]]
 name = "px-compiler"
 version = "0.0.0"
 dependencies = [
