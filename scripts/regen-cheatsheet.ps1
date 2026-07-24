@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
-    $outFile = Join-Path $root "docs\px-grammar-cheatsheet.md"
+    $outFile = Join-Path (Join-Path $root "docs") "px-grammar-cheatsheet.md"
     & cargo run -q -p px-cheatsheet -- "$outFile"
     if ($LASTEXITCODE -ne 0) { throw "px-cheatsheet-gen failed (exit $LASTEXITCODE)" }
     Write-Host ("regenerated {0} ({1} bytes)" -f $outFile, (Get-Item $outFile).Length)
