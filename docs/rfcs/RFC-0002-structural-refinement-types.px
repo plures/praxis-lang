@@ -81,7 +81,7 @@ constraint no_new_expression_syntax:
 
 constraint downstream_audit_binding:
   scope: process
-  require: downstream_audit_required.pluresdb_px == "exhaustive_match_check"
+  require: downstream_audit_required.pluresdb_px == "exhaustive_match_check" and downstream_audit_required.pares_radix == "exhaustive_match_check" and downstream_audit_required.pares_agens == "exhaustive_match_check"
   severity: error
   message: "Follow-on implementation PR must audit exhaustive TypeExpr matches in all three downstream repos before merge"
 
