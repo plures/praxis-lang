@@ -129,9 +129,9 @@ in `rule`, so it can be reused as a *type*, not just a one-off check.
 | `type` (`TypeAliasDecl`) | Declaration (named type binding, refinement carried as an attached predicate) | yes |
 
 No existing row in the RFC-0001 table changes. `Refined` is a `TypeExpr` variant, not a
-new declaration kind on its own — it only becomes observable at the surface via `type`,
-or inline wherever a `TypeExpr` is otherwise legal (field/param/return position), both of
-which already lower through the `Declaration` primitive that owns type annotations today.
+new declaration kind on its own — in this slice it becomes observable at the surface only via
+`type` (`TypeAliasDecl`), and it still lowers through the `Declaration` primitive that owns type
+annotations today.
 
 ## 5. Compatibility, Projection, Downstream-Transparency
 
