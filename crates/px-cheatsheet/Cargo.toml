@@ -5,10 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-px-ast = { path = "../px-ast" }
 px-schema = { path = "../px-schema" }
 schemars = { workspace = true }
-serde_json = { workspace = true }
 
 [[bin]]
 name = "px-cheatsheet-gen"
