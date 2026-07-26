@@ -10,7 +10,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A type expression used in field declarations, params, and return types.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", content = "value")]
 pub enum TypeExpr {
     /// Primitive: `bool`, `int`, `float`, `string`, `duration`
@@ -75,7 +75,7 @@ impl std::fmt::Display for TypeExpr {
                 write!(f, ")")
             }
             TypeExpr::Refined { base, predicate } => {
-                write!(f, "{} where {:?}", base, predicate)
+                write!(f, "{} where {}", base, predicate)
             }
         }
     }
