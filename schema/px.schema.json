@@ -2826,6 +2826,25 @@
               "$ref": "#/definitions/ScenarioDecl"
             }
           }
+        },
+        {
+          "description": "RFC-0002: `type Name = TypeExpr` (13th surface construct)",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "TypeAlias"
+              ]
+            },
+            "value": {
+              "$ref": "#/definitions/TypeAliasDecl"
+            }
+          }
         }
       ]
     },
@@ -3501,6 +3520,22 @@
         }
       }
     },
+    "TypeAliasDecl": {
+      "description": "`type <Name> = <TypeExpr>` - the 13th surface construct. RFC-0002 specifies that its later semantic-core lowering targets `Declaration`; this AST preserves the surface construct and its type expression for that lowering.",
+      "type": "object",
+      "required": [
+        "aliased",
+        "name"
+      ],
+      "properties": {
+        "aliased": {
+          "$ref": "#/definitions/TypeExpr"
+        },
+        "name": {
+          "$ref": "#/definitions/Ident"
+        }
+      }
+    },
     "TypeExpr": {
       "description": "A type expression used in field declarations, params, and return types.",
       "oneOf": [
@@ -3627,6 +3662,37 @@
               "type": "array",
               "items": {
                 "$ref": "#/definitions/Ident"
+              }
+            }
+          }
+        },
+        {
+          "description": "RFC-0002: a base/collection type narrowed by a boolean predicate over `value`. Scope per RFC-0002 §1: only `Base`, `List`, `Optional`, `Map`, `Enum` may be the refined base (no `Named`, no nested `Refined`). The predicate is an ordinary v1 `Expr` with exactly one free variable bound by convention to `value`.",
+          "type": "object",
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Refined"
+              ]
+            },
+            "value": {
+              "type": "object",
+              "required": [
+                "base",
+                "predicate"
+              ],
+              "properties": {
+                "base": {
+                  "$ref": "#/definitions/TypeExpr"
+                },
+                "predicate": {
+                  "$ref": "#/definitions/Expr"
+                }
               }
             }
           }
