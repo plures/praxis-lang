@@ -1,0 +1,186 @@
+// RFC-0003-effects-and-capabilities.px
+// Self-hosting specification for the effects/capabilities design.
+// Per the RFC's own scope, this file uses ONLY current .px syntax (no `effects:`
+// field, since that doesn't exist until implementation). It models the design's
+// scope, boundaries, and acceptance criteria the same way RFC-0001/0002's
+// companion files modeled their own designs.
+//
+// Exercises: config, entity, fact, function, constraint, contract, scenario.
+
+config rfc_0003:
+  title: "Effects and Capabilities"
+  status: "draft"
+  author: "kbristol"
+  workstream: "WS-1"
+  gates_on: "RFC-0002"
+
+// The closed effect-class enum this slice proposes (modeled as a fact per
+// variant since .px has no enum-of-strings declaration form at surface level
+// outside TypeExpr::Enum, which this RFC does not touch).
+entity ProposedEffectClass:
+  prefix: "eff"
+  fields:
+    name: string
+    matches_substrate_class: string
+
+fact effect_db_read:
+  name: string
+  matches_substrate_class: string
+
+fact effect_db_write:
+  name: string
+  matches_substrate_class: string
+
+fact effect_network:
+  name: string
+  matches_substrate_class: string
+
+fact effect_shell:
+  name: string
+  matches_substrate_class: string
+
+fact effect_file_read:
+  name: string
+  matches_substrate_class: string
+
+fact effect_file_write:
+  name: string
+  matches_substrate_class: string
+
+fact effect_env_read:
+  name: string
+  matches_substrate_class: string
+
+fact effect_clock:
+  name: string
+  matches_substrate_class: string
+
+fact effect_random:
+  name: string
+  matches_substrate_class: string
+
+// The capability grant shape this slice proposes.
+entity ProposedCapabilityGrant:
+  prefix: "cap"
+  fields:
+    effect: string
+    scope: string
+    unscoped: bool
+
+config scope_boundaries:
+  new_expression_syntax: "out_of_scope"
+  policy_derived_grants: "deferred_to_rfc_0004"
+  durable_capability_persistence: "deferred_to_rfc_0005"
+  bounded_verification_of_reachability: "deferred_to_rfc_0006"
+  capability_attenuation_delegation: "deferred_to_future_rfc"
+  secret_read_effect: "deferred_no_consumer_yet"
+  function_registry_signature_change: "out_of_scope"
+
+config compatibility_policy:
+  preserve_existing_parse: true
+  break_existing_files: false
+  new_field_is_additive: true
+  default_when_absent: "pure"
+
+config fail_closed_properties:
+  default_deny_when_no_capability_set: true
+  deny_before_side_effect: true
+  undeclared_effects_always_denied: true
+
+config downstream_audit_required:
+  pluresdb_px: "exhaustive_match_check"
+  pares_radix: "exhaustive_match_check"
+  pares_agens: "exhaustive_match_check"
+
+config honesty_note:
+  adr_0038_found_in_pares_radix: false
+  procedure_graph_substrate_notes_found: true
+  substrate_notes_path: "memory/design-procedure-graph-repository-substrate-2026-07-24.md"
+
+function lowers_effects_field(construct: string) -> string:
+  mode: deterministic
+  """Map the proposed `effects:` field to its semantic-core primitive (Declaration, per RFC-0001's table: function/procedure already lower to Declaration/Procedure)."""
+
+function inferred_effects(declaration: string) -> string:
+  mode: deterministic
+  """Compute a declaration's inferred effect set as declared_effects union the inferred effect sets of everything it calls."""
+
+constraint no_breaking_parse:
+  scope: compatibility
+  require: break_existing_files == false
+  severity: error
+  message: "RFC-0003 must not change any existing production's syntax"
+
+constraint effects_field_additive_only:
+  scope: scope
+  require: new_field_is_additive == true
+  severity: error
+  message: "This slice is additive: a new optional effects: field on function/procedure declarations, absent means pure"
+
+constraint no_new_expression_syntax:
+  scope: scope
+  require: scope_boundaries.new_expression_syntax == "out_of_scope"
+  severity: error
+  message: "Effect declarations attach to headers; no new operators or literal forms in Expr"
+
+constraint default_pure_when_absent:
+  scope: semantics
+  require: default_when_absent == "pure"
+  severity: error
+  message: "A function/procedure declaration with no effects: field, or effects: [], is pure"
+
+constraint fail_closed_binding:
+  scope: enforcement
+  require: fail_closed_properties.default_deny_when_no_capability_set == true and fail_closed_properties.deny_before_side_effect == true and fail_closed_properties.undeclared_effects_always_denied == true
+  severity: error
+  message: "Runtime capability enforcement must default-deny, deny before the side effect executes, and always deny undeclared effects regardless of declared-effects warnings"
+
+constraint downstream_audit_binding:
+  scope: process
+  require: downstream_audit_required.pluresdb_px == "exhaustive_match_check" and downstream_audit_required.pares_radix == "exhaustive_match_check" and downstream_audit_required.pares_agens == "exhaustive_match_check"
+  severity: error
+  message: "Follow-on implementation PR must audit exhaustive matches over any enum gaining an Effect/CapabilityGrant arm in all three downstream repos before merge"
+
+constraint honest_source_citation:
+  scope: process
+  require: honesty_note.adr_0038_found_in_pares_radix == false and honesty_note.procedure_graph_substrate_notes_found == true
+  severity: error
+  message: "This RFC must not cite ADR-0038 as read when it was not found in the pares-radix working tree; it must cite the procedure-graph substrate notes it did read"
+
+contract effect_class_maps_to_substrate:
+  given: "The procedure-graph substrate's 13.1 capability classes (graph.read, graph.write, process.spawn, network.connect, environment.read, secret.read, clock.read, random.read, etc.)"
+  when: "The Effect enum for this praxis-lang slice is defined"
+  then: "Each Effect variant corresponds to one or more substrate capability classes, collapsed to a coarser language-level granularity, with scope carried by an opaque qualifier rather than a parameterized variant"
+  threshold: 1.0
+  examples:
+    - input: "network.connect:api.example.com"
+      expect: "CapabilityGrant { effect: network, scope: api.example.com }"
+    - input: "process.spawn:git"
+      expect: "CapabilityGrant { effect: shell, scope: git }"
+
+contract fail_closed_default:
+  given: "A .px evaluation context with no CapabilitySet supplied"
+  when: "A call requiring any non-empty declared effect is attempted"
+  then: "The call is denied, matching EmptyRegistry's existing no-functions-registered default-deny behavior generalized from functions to capabilities"
+  threshold: 1.0
+  examples:
+    - input: "function post_message(...) effects: [network] called with no capability set"
+      expect: "CapabilityDenied(network)"
+
+contract capabilities_only_narrow:
+  given: "A procedure call chain: caller with granted capability set C, calling callee"
+  when: "Callee's effective capability set is computed"
+  then: "Callee's effective set is exactly C; capabilities never widen down a call chain in this slice (no per-callee escalation mechanism)"
+  threshold: 1.0
+  examples:
+    - input: "caller granted [db_read], calls callee declaring effects: [db_read, network]"
+      expect: "callee capability check for network fails even though callee declares wanting it"
+
+scenario verify_self_hosting:
+  given: "This RFC file authored in current .px syntax (no effects: sugar)"
+  setup:
+    define $path = "docs/rfcs/RFC-0003-effects-and-capabilities.px"
+  run: parse_px {input: $path}
+  expect:
+    - parse_succeeds {}
+    - NOT error_raised {}
