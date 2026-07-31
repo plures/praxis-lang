@@ -71,4 +71,6 @@ pub enum Statement {
     DataflowProcedure(DataflowProcedureDecl),
     LegacyProcedure(LegacyProcedureDecl),
     Scenario(ScenarioDecl),
+    /// RFC-0002: `type Name = TypeExpr` (13th surface construct)
+    TypeAlias(TypeAliasDecl),
 }

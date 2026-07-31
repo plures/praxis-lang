@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A value that can appear in declarations, step arguments, or config entries.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", content = "value")]
 pub enum Value {
     /// `"hello"` or `'hello'`
@@ -50,4 +50,64 @@ pub enum ArithOp {
     Mul,
     Div,
     Mod,
+}
+
+impl std::fmt::Display for ArithOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            ArithOp::Add => "+",
+            ArithOp::Sub => "-",
+            ArithOp::Mul => "*",
+            ArithOp::Div => "/",
+            ArithOp::Mod => "%",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::String(s) => write!(f, "\"{}\"", s),
+            Value::Integer(i) => write!(f, "{}", i),
+            Value::Float(v) => write!(f, "{}", v),
+            Value::Boolean(b) => write!(f, "{}", b),
+            Value::List(items) => {
+                write!(f, "[")?;
+                for (i, v) in items.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", v)?;
+                }
+                write!(f, "]")
+            }
+            Value::Map(entries) => {
+                write!(f, "{{")?;
+                for (i, (k, v)) in entries.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}: {}", k, v)?;
+                }
+                write!(f, "}}")
+            }
+            Value::Call { name, args } => {
+                write!(f, "{}(", name)?;
+                for (i, a) in args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", a)?;
+                }
+                write!(f, ")")
+            }
+            Value::Arithmetic { left, op, right } => write!(f, "{} {} {}", left, op, right),
+            Value::Var(v) => write!(f, "{}", v),
+            Value::Path(p) => write!(f, "{}", p),
+            Value::Ident(id) => write!(f, "{}", id),
+            Value::Paren(inner) => write!(f, "({})", inner),
+            Value::Null => write!(f, "null"),
+        }
+    }
 }

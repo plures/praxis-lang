@@ -25,6 +25,7 @@ statement = _{
   | dataflow_procedure_decl
   | procedure_decl
   | scenario_decl
+  | type_alias_decl
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -34,6 +35,9 @@ statement = _{
 // === Imports ===
 import_decl = { "import" ~ rust_path ~ ("as" ~ ident)? }
 rust_path = @{ ident ~ ("::" ~ ident)* }
+
+// === Type aliases (RFC-0002: `type Name = TypeExpr`) ===
+type_alias_decl = { "type" ~ ident ~ "=" ~ type_expr }
 
 // === Entities (typed PluresDB node schemas) ===
 entity_decl = { "entity" ~ ident ~ ":" ~ NEWLINE ~ entity_body }
@@ -377,13 +381,18 @@ bracket_segment = @{ "[" ~ (ASCII_DIGIT+ | ("\"" ~ (!"\"" ~ ANY)* ~ "\"") | ("'"
 // TYPES
 // ══════════════════════════════════════════════════════════════════════════════
 
-type_expr = { enum_type | list_type | optional_type | map_type | base_type | ident_type }
+type_expr = { refined_type | enum_type | list_type | optional_type | map_type | base_type | ident_type }
 base_type = { "bool" | "int" | "float" | "string" | "duration" }
 ident_type = { ident }
 enum_type = { "enum(" ~ ident ~ ("," ~ ident)* ~ ")" }
 list_type = { "list[" ~ type_expr ~ "]" }
 optional_type = { "optional[" ~ type_expr ~ "]" }
 map_type = { "map[" ~ type_expr ~ "," ~ type_expr ~ "]" }
+// RFC-0002: a base/collection type narrowed by a boolean predicate over `value`.
+// refined_base excludes ident_type (no `Named` refinement, RFC-0002 section 1 non-goal) and
+// excludes refined_type itself (no nested refinement, RFC-0002 section 1 non-goal).
+refined_type = { refined_base ~ "where" ~ expr }
+refined_base = { enum_type | list_type | optional_type | map_type | base_type }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // VALUES (shared between v1 expressions and declarations)
