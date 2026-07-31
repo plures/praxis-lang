@@ -7,6 +7,9 @@
 import_decl = { "import" ~ rust_path ~ ("as" ~ ident)? }
 rust_path = @{ ident ~ ("::" ~ ident)* }
 
+// === Type aliases (RFC-0002: `type Name = TypeExpr`) ===
+type_alias_decl = { "type" ~ ident ~ "=" ~ type_expr }
+
 // === Entities (typed PluresDB node schemas) ===
 entity_decl = { "entity" ~ ident ~ ":" ~ NEWLINE ~ entity_body }
 entity_body = { entity_prefix_clause? ~ entity_fields_clause }

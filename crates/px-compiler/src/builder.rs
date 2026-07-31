@@ -162,6 +162,7 @@ pub(crate) fn build_statement(pair: Pair<'_>) -> R<Statement> {
         )),
         Rule::procedure_decl => Ok(Statement::LegacyProcedure(build_legacy_procedure(pair)?)),
         Rule::scenario_decl => Ok(Statement::Scenario(build_scenario(pair)?)),
+        Rule::type_alias_decl => Ok(Statement::TypeAlias(build_type_alias(pair)?)),
         other => Err(CompileError::unsupported(
             format!("{other:?}"),
             "not a recognized top-level statement rule",
@@ -230,10 +231,39 @@ fn build_type_inner(pair: Pair<'_>) -> R<TypeExpr> {
             let variants = pair.into_inner().map(ident_of).collect();
             Ok(TypeExpr::Enum(variants))
         }
+        Rule::refined_type => {
+            let mut it = pair.into_inner();
+            let base_pair = next(&mut it, "refined_type", "refined_base")?;
+            let base_inner = base_pair
+                .into_inner()
+                .next()
+                .ok_or_else(|| CompileError::internal("refined_base: missing inner"))?;
+            let base = build_type_inner(base_inner)?;
+            let predicate_pair = next(&mut it, "refined_type", "predicate expr")?;
+            let predicate = build_expr(predicate_pair)?;
+            Ok(TypeExpr::Refined {
+                base: Box::new(base),
+                predicate: Box::new(predicate),
+            })
+        }
         other => Err(CompileError::internal(format!(
             "unexpected type rule {other:?}"
         ))),
     }
+}
+
+// type_alias_decl = { "type" ~ ident ~ "=" ~ type_expr }
+fn build_type_alias(pair: Pair<'_>) -> R<TypeAliasDecl> {
+    let span = span_of(&pair);
+    let mut it = pair.into_inner();
+    let name = ident_of(next(&mut it, "type_alias_decl", "name")?);
+    let aliased_pair = next(&mut it, "type_alias_decl", "type_expr")?;
+    let aliased = build_type_expr(aliased_pair)?;
+    Ok(TypeAliasDecl {
+        name,
+        aliased,
+        span: Some(span),
+    })
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════

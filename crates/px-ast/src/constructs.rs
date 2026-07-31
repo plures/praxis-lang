@@ -27,6 +27,22 @@ pub struct ImportDecl {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// TYPE ALIAS (RFC-0002: `type Name = TypeExpr`)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// `type <Name> = <TypeExpr>` - the 13th surface construct.
+/// RFC-0002 specifies that its later semantic-core lowering targets `Declaration`; this
+/// AST preserves the surface construct and its type expression for that lowering.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TypeAliasDecl {
+    pub name: Ident,
+    pub aliased: TypeExpr,
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub span: Option<Span>,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // ENTITY (typed PluresDB node schemas)
 // ═══════════════════════════════════════════════════════════════════════════════
 
