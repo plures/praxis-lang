@@ -338,6 +338,7 @@ schema Statement:  # sum type (tagged on `kind`)
   variant: DataflowProcedure
   variant: LegacyProcedure
   variant: Scenario
+  variant: TypeAlias
 
 schema Step:  # sum type (tagged on `kind`)
   variant: Define
@@ -387,6 +388,10 @@ schema TryStep:
   f retry_opts: list[RetryOpt]
   f steps: list[Step]
 
+schema TypeAliasDecl:
+  f aliased: TypeExpr
+  f name: Ident
+
 schema TypeExpr:  # sum type (tagged on `kind`)
   variant: Base
   variant: Named
@@ -394,6 +399,7 @@ schema TypeExpr:  # sum type (tagged on `kind`)
   variant: Optional
   variant: Map
   variant: Enum
+  variant: Refined
 
 schema UnaryOp:  # enum
   value: Not

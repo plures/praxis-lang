@@ -33,7 +33,7 @@ jobs:
     name: regenerate generated artifacts (schema + grammar) from px-ast
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Cache cargo
@@ -67,7 +67,7 @@ jobs:
     name: verify (fmt + clippy + build + test)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -94,7 +94,7 @@ jobs:
     needs: [regenerate-artifacts, verify]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Confirm generated artifacts are committed (release prerequisite)
         run: |
           test -f schema/px.schema.json

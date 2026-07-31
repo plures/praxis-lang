@@ -99,6 +99,25 @@ pub enum Accessor {
     Bracket(String),
 }
 
+impl std::fmt::Display for Accessor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Accessor::Dot(id) => write!(f, ".{}", id),
+            Accessor::Bracket(key) => write!(f, "[{}]", key),
+        }
+    }
+}
+
+impl std::fmt::Display for VarRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "${}", self.name)?;
+        for accessor in &self.accessors {
+            write!(f, "{}", accessor)?;
+        }
+        Ok(())
+    }
+}
+
 /// A dotted identifier path (e.g., `module.submodule.name`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct DottedIdent {
@@ -121,5 +140,17 @@ impl DottedIdent {
             segments: parts.into_iter().map(Ident::new).collect(),
             span: None,
         }
+    }
+}
+
+impl std::fmt::Display for DottedIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, seg) in self.segments.iter().enumerate() {
+            if i > 0 {
+                write!(f, ".")?;
+            }
+            write!(f, "{}", seg)?;
+        }
+        Ok(())
     }
 }
