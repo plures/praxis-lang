@@ -3,10 +3,15 @@
 // TYPES
 // ══════════════════════════════════════════════════════════════════════════════
 
-type_expr = { enum_type | list_type | optional_type | map_type | base_type | ident_type }
+type_expr = { refined_type | enum_type | list_type | optional_type | map_type | base_type | ident_type }
 base_type = { "bool" | "int" | "float" | "string" | "duration" }
 ident_type = { ident }
 enum_type = { "enum(" ~ ident ~ ("," ~ ident)* ~ ")" }
 list_type = { "list[" ~ type_expr ~ "]" }
 optional_type = { "optional[" ~ type_expr ~ "]" }
 map_type = { "map[" ~ type_expr ~ "," ~ type_expr ~ "]" }
+// RFC-0002: a base/collection type narrowed by a boolean predicate over `value`.
+// refined_base excludes ident_type (no `Named` refinement, RFC-0002 section 1 non-goal) and
+// excludes refined_type itself (no nested refinement, RFC-0002 section 1 non-goal).
+refined_type = { refined_base ~ "where" ~ expr }
+refined_base = { enum_type | list_type | optional_type | map_type | base_type }
