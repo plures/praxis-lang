@@ -11,9 +11,13 @@ name: release
 #
 # STATUS (post-epic, v0.1.0): crate versions are 0.1.0 and M5 (NAPI bindings)
 # has landed, so the M4-era "defer publish to M5" placeholder is stale. The
-# `publish` job below now REALLY executes `cargo publish --dry-run` for every
-# Rust crate (dependency order) and `npm publish --dry-run` for the NAPI
-# package. No registry secrets currently exist (`CARGO_REGISTRY_TOKEN`,
+# `publish` job below executes a real `cargo publish --dry-run` for the
+# dependency root plus `cargo package --workspace` (which packages and builds
+# every publishable workspace manifest against Cargo's temporary registry; this
+# is necessary because dependent crates cannot individually publish-dry-run
+# until their unpublished internal dependencies exist on crates.io). It also
+# executes `npm publish --dry-run` for the NAPI package. No registry secrets
+# currently exist (`CARGO_REGISTRY_TOKEN`,
 # `NPM_TOKEN`), so this job deliberately runs the dry-run path ONLY and says
 # so explicitly in its job name/output. To enable a future real registry
 # release, first add the secrets:
@@ -115,21 +119,21 @@ jobs:
           test -f crates/px-grammar/src/grammar.pest
           echo "Generated artifacts present and drift-gated."
 
-      - name: cargo publish --dry-run (dependency order)
+      - name: cargo publish --dry-run + package all workspace crates
         run: |
           set -euo pipefail
           echo "Dry-run only: no CARGO_REGISTRY_TOKEN repo secret is configured."
           echo "To enable real crates.io publishing, add the token then replace"
           echo "the --dry-run invocation below in a reviewed release PR."
-          # Rust crates, in strict dependency order. px-napi is a cdylib
-          # native addon and is intentionally excluded — it ships via npm,
-          # not crates.io (see the npm step below).
-          crates=(px-ast px-grammar-gen px-grammar px-schema-derive px-schema px-compiler px-eval px-yaml)
-          for c in "${crates[@]}"; do
-            echo "::group::cargo publish --dry-run -p $c"
-            cargo publish --dry-run --allow-dirty -p "$c"
-            echo "::endgroup::"
-          done
+          # Prove a real publish transaction for the dependency root.
+          cargo publish --dry-run --allow-dirty -p px-ast
+          # Cargo cannot dry-run each dependent crate individually until px-ast
+          # itself is on crates.io. This command creates a temporary registry,
+          # packages EVERY workspace crate, rewrites path dependencies to their
+          # 0.1.0 registry requirements, and builds the extracted packages in
+          # dependency order. It is the full offline-equivalent validation of
+          # the first coordinated crates.io release.
+          cargo package --workspace --allow-dirty
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -155,6 +159,6 @@ jobs:
       - name: Summary
         run: |
           echo "### Publish summary (v0.1.0)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Rust crates (8, dependency order): cargo publish --dry-run executed for each; real crates.io publish pending CARGO_REGISTRY_TOKEN secret." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Rust crates: cargo publish --dry-run executed for dependency root px-ast; cargo package --workspace then packaged and built every crate against Cargo's temporary registry. Real crates.io publish pending CARGO_REGISTRY_TOKEN secret." >> "$GITHUB_STEP_SUMMARY"
           echo "- px-napi native addon: built for release + npm publish --dry-run executed; real npm publish pending NPM_TOKEN secret." >> "$GITHUB_STEP_SUMMARY"
           echo "- Add secrets with: gh secret set CARGO_REGISTRY_TOKEN --repo plures/praxis-lang ; gh secret set NPM_TOKEN --repo plures/praxis-lang" >> "$GITHUB_STEP_SUMMARY"

@@ -17,10 +17,10 @@ crate-type = ["cdylib"]
 # over N-API so Node/TS consumers run the Rust engine directly (ADR pillar P5).
 napi = { version = "3", default-features = false, features = ["napi9", "serde-json"] }
 napi-derive = "3"
-px-ast = { path = "../px-ast" }
-px-compiler = { path = "../px-compiler" }
-px-eval = { path = "../px-eval" }
-px-yaml = { path = "../px-yaml" }
+px-ast = { path = "../px-ast", version = "0.1.0" }
+px-compiler = { path = "../px-compiler", version = "0.1.0" }
+px-eval = { path = "../px-eval", version = "0.1.0" }
+px-yaml = { path = "../px-yaml", version = "0.1.0" }
 serde_json = { workspace = true }
 
 [build-dependencies]

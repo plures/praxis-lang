@@ -13,4 +13,4 @@ name = "px-grammar-gen"
 path = "src/main.rs"
 
 [dependencies]
-px-ast = { path = "../px-ast" }
+px-ast = { path = "../px-ast", version = "0.1.0" }
