@@ -1,11 +1,11 @@
 {
   "name": "@plures/px-napi",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "NAPI-RS bindings for the .px Praxis Intent Language (parse/evaluate/check_constraints over the canonical Rust engine).",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/plures/praxis-lang"
+    "url": "git+https://github.com/plures/praxis-lang.git"
   },
   "main": "index.js",
   "types": "index.d.ts",

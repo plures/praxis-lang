@@ -14,7 +14,7 @@
   "required": [
     "statements"
   ],
-  "x-px-ast-version": "0.0.0",
+  "x-px-ast-version": "0.1.0",
   "definitions": {
     "Accessor": {
       "description": "Access path segment on a variable or expression.",

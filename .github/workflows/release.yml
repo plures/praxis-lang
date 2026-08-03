@@ -9,11 +9,18 @@ name: release
 # from the freshly generated output. A release therefore cannot ship a schema
 # that lags the AST — the gate blocks it.
 #
-# HONEST SCOPE (epic M4): crate versions are 0.0.0 and NAPI publish wiring is
-# scheduled for M5 (see docs/epic/PRAXIS-LANG-TRACKER.md), so this workflow does
-# NOT fake a crates.io / npm publish. The `publish` job below is intentionally a
-# documented, non-executing placeholder that will be filled in M5. What IS real
-# and enforced today is the regenerate-artifacts-and-block-on-drift gate.
+# STATUS (post-epic, v0.1.0): crate versions are 0.1.0 and M5 (NAPI bindings)
+# has landed, so the M4-era "defer publish to M5" placeholder is stale. The
+# `publish` job below now REALLY executes `cargo publish --dry-run` for every
+# Rust crate (dependency order) and `npm publish --dry-run` for the NAPI
+# package. No registry secrets currently exist (`CARGO_REGISTRY_TOKEN`,
+# `NPM_TOKEN`), so this job deliberately runs the dry-run path ONLY and says
+# so explicitly in its job name/output. To enable a future real registry
+# release, first add the secrets:
+#   gh secret set CARGO_REGISTRY_TOKEN --repo plures/praxis-lang
+#   gh secret set NPM_TOKEN --repo plures/praxis-lang
+# Then replace the explicitly marked `--dry-run` commands below with real
+# `cargo publish` / `npm publish --access public` commands in a reviewed PR.
 
 on:
   push:
@@ -83,25 +90,71 @@ jobs:
       - name: Test
         run: cargo test --workspace
 
-  # HONEST PLACEHOLDER (epic M5 follow-up — NOT a fake publish):
-  # crate versions are 0.0.0 and the NAPI-RS build/publish wiring is scheduled
-  # for M5. This job gates on the real drift + verify jobs and, for now, only
-  # asserts the release artifacts are present. It deliberately does NOT run
-  # `cargo publish` / `npm publish` — that lands in M5. See
-  # docs/epic/PRAXIS-LANG-TRACKER.md.
+  # REAL PUBLISH JOB (v0.1.0). Runs `cargo publish --dry-run` for every Rust
+  # crate in dependency order and `npm publish --dry-run` for the NAPI
+  # package. This is genuinely executed, not simulated: cargo/npm perform full
+  # manifest + package validation even in dry-run mode, and their output is
+  # inspectable in the job log. Real (non-dry-run) publish is gated on the
+  # CARGO_REGISTRY_TOKEN / NPM_TOKEN repo secrets existing; the job reports
+  # which mode it ran in via its own log output (never silently claims a real
+  # publish that didn't happen).
   publish:
-    name: publish (M5 follow-up — placeholder, no fake publish)
+    name: publish (dry-run — no registry token configured)
     needs: [regenerate-artifacts, verify]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
       - name: Confirm generated artifacts are committed (release prerequisite)
         run: |
           test -f schema/px.schema.json
           test -f schema/px.schema.px
           test -f crates/px-grammar/src/grammar.pest
           echo "Generated artifacts present and drift-gated."
-      - name: Publish step (deferred to M5)
+
+      - name: cargo publish --dry-run (dependency order)
         run: |
-          echo "Crate/NAPI publish is deferred to epic M5 (versions are 0.0.0)."
-          echo "This job intentionally performs NO publish. See docs/epic/PRAXIS-LANG-TRACKER.md."
+          set -euo pipefail
+          echo "Dry-run only: no CARGO_REGISTRY_TOKEN repo secret is configured."
+          echo "To enable real crates.io publishing, add the token then replace"
+          echo "the --dry-run invocation below in a reviewed release PR."
+          # Rust crates, in strict dependency order. px-napi is a cdylib
+          # native addon and is intentionally excluded — it ships via npm,
+          # not crates.io (see the npm step below).
+          crates=(px-ast px-grammar-gen px-grammar px-schema-derive px-schema px-compiler px-eval px-yaml)
+          for c in "${crates[@]}"; do
+            echo "::group::cargo publish --dry-run -p $c"
+            cargo publish --dry-run --allow-dirty -p "$c"
+            echo "::endgroup::"
+          done
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Build px-napi native addon (release, host platform)
+        working-directory: crates/px-napi
+        run: |
+          npm install --no-audit --no-fund
+          npx napi build --platform --release
+
+      - name: npm publish --dry-run (@plures/px-napi)
+        working-directory: crates/px-napi
+        run: |
+          set -euo pipefail
+          echo "Dry-run only: no NPM_TOKEN repo secret is configured."
+          echo "To enable real npm publishing, add the token then replace this"
+          echo "--dry-run invocation in a reviewed release PR."
+          npm publish --dry-run --access public
+
+      - name: Summary
+        run: |
+          echo "### Publish summary (v0.1.0)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Rust crates (8, dependency order): cargo publish --dry-run executed for each; real crates.io publish pending CARGO_REGISTRY_TOKEN secret." >> "$GITHUB_STEP_SUMMARY"
+          echo "- px-napi native addon: built for release + npm publish --dry-run executed; real npm publish pending NPM_TOKEN secret." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Add secrets with: gh secret set CARGO_REGISTRY_TOKEN --repo plures/praxis-lang ; gh secret set NPM_TOKEN --repo plures/praxis-lang" >> "$GITHUB_STEP_SUMMARY"
