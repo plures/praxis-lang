@@ -3,7 +3,7 @@
 # GENERATED from px-ast via px-schema (do NOT edit by hand).
 # Regenerate: cargo run -p px-schema -- <out-dir>   (or scripts/regen-schema.ps1)
 # Source of truth: crates/px-ast/src/  (ADR §M4, C-DRIFT-001)
-# px-ast version: 0.0.0
+# px-ast version: 0.1.0
 #
 # This is a .px-native projection of the JSON Schema (px.schema.json).
 # Each `schema` block below mirrors one px-ast type; `f` lines are its
@@ -12,7 +12,7 @@
 
 config schema_meta:
   language: "px"
-  px_ast_version: "0.0.0"
+  px_ast_version: "0.1.0"
   json_schema: "px.schema.json"
   projection_of: "px-ast"
 
