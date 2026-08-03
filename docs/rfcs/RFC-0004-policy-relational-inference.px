@@ -1,0 +1,192 @@
+// RFC-0004-policy-relational-inference.px
+// Self-hosting specification for the policy/relational-inference design.
+// Per the RFC's own scope, this file uses ONLY current .px syntax (no `relation`,
+// `infer`, `policy`, or `decide` constructs, since those don't exist until
+// implementation). It models the design's scope, boundaries, and acceptance
+// criteria the same way RFC-0001/0002/0003's companion files modeled their own
+// designs.
+//
+// Exercises: config, entity, fact, function, constraint, contract, scenario.
+
+config rfc_0004:
+  title: "Policy and Relational Inference"
+  status: "draft"
+  author: "kbristol"
+  workstream: "WS-1"
+  gates_on: "RFC-0003"
+
+// The proposed relation shape (modeled as an entity + facts since .px has no
+// native relation/infer declaration form at surface level; this models the
+// design, not a shipped construct).
+entity ProposedRelation:
+  prefix: "rel"
+  fields:
+    name: string
+    kind: string
+    derived_by_infer: bool
+
+fact relation_eligible_reviewer:
+  name: string
+  kind: string
+  derived_by_infer: bool
+
+fact relation_org_member:
+  name: string
+  kind: string
+  derived_by_infer: bool
+
+fact relation_conflict_of_interest:
+  name: string
+  kind: string
+  derived_by_infer: bool
+
+// The proposed policy shape.
+entity ProposedPolicy:
+  prefix: "pol"
+  fields:
+    name: string
+    context_field_count: string
+    outcome_type: string
+    has_catchall_decide: bool
+
+fact policy_grant_network_capability:
+  name: string
+  context_field_count: string
+  outcome_type: string
+  has_catchall_decide: bool
+
+config scope_boundaries:
+  new_expression_syntax: "out_of_scope"
+  recursive_relational_inference: "deferred_to_future_rfc"
+  negation_beyond_single_stratum: "deferred_to_future_rfc"
+  durable_policy_persistence: "deferred_to_rfc_0005"
+  bounded_verification_of_totality: "deferred_to_rfc_0006"
+  capability_grant_wiring_change: "out_of_scope"
+  adr_0038_rebasing: "optional_later_work_not_required"
+
+config compatibility_policy:
+  preserve_existing_parse: true
+  break_existing_files: false
+  relation_and_policy_are_additive: true
+  no_change_to_existing_lowering_table_rows: true
+
+config infer_semantics:
+  multiple_rules_per_relation_union: true
+  stratified_non_recursive_only: true
+  negation_must_not_be_self_referential: true
+
+config decide_semantics:
+  first_match_wins: true
+  unconditional_catchall_required: true
+  fail_closed_default_matches_rfc_0003: true
+
+config downstream_audit_required:
+  pluresdb_px: "exhaustive_match_check"
+  pares_radix: "exhaustive_match_check"
+  pares_agens: "exhaustive_match_check"
+
+config honesty_note:
+  adr_0038_found_in_pares_radix: true
+  adr_0038_path: ".praxis/decisions/ADR-0038-radix-policy-settings-engine.md"
+  adr_0038_requires_change_for_this_rfc: false
+  adr_0038_summary: "host-side PluresDB key-scoped policy engine using today's .px procedures; complementary to, not dependent on, this RFC's language-level relation/policy constructs"
+
+function lowers_relation_decl(construct: string) -> string:
+  mode: deterministic
+  """Map the proposed relation declaration to its semantic-core primitive (Declaration, per RFC-0001's table: relation is a named typed binding like entity/fact)."""
+
+function lowers_policy_decl(construct: string) -> string:
+  mode: deterministic
+  """Map the proposed policy declaration to its semantic-core primitive (Declaration for the schema; the decide rule body lowers to Procedure)."""
+
+function evaluate_relation(name: string, context: string) -> string:
+  mode: deterministic
+  """Compute the tuples of an intensional relation as the union of every matching infer rule's derivation over extensional/intensional relations it references."""
+
+function evaluate_policy(name: string, context: string) -> string:
+  mode: deterministic
+  """Evaluate a policy's decide clauses in declaration order, returning the outcome of the first clause whose when/from conditions hold, falling back to the mandatory unconditional catch-all."""
+
+constraint no_breaking_parse:
+  scope: compatibility
+  require: break_existing_files == false
+  severity: error
+  message: "RFC-0004 must not change any existing production's syntax"
+
+constraint relation_and_policy_additive_only:
+  scope: scope
+  require: compatibility_policy.relation_and_policy_are_additive == true and compatibility_policy.no_change_to_existing_lowering_table_rows == true
+  severity: error
+  message: "relation/policy/infer/decide are new additive construct kinds; no existing construct's syntax or lowering-table row changes"
+
+constraint no_new_expression_syntax:
+  scope: scope
+  require: scope_boundaries.new_expression_syntax == "out_of_scope"
+  severity: error
+  message: "Relational queries and policy rules attach to new top-level declaration forms, not new operators or literal forms in Expr"
+
+constraint no_capability_wiring_change:
+  scope: scope
+  require: scope_boundaries.capability_grant_wiring_change == "out_of_scope"
+  severity: error
+  message: "RFC-0004 does not modify RFC-0003's Effect/CapabilityGrant shapes or its fail-closed runtime check"
+
+constraint stratified_inference_only:
+  scope: semantics
+  require: infer_semantics.stratified_non_recursive_only == true and infer_semantics.negation_must_not_be_self_referential == true
+  severity: error
+  message: "infer rules must be non-recursive and stratified: no relation may be derived through a chain that also negates itself"
+
+constraint policy_fail_closed_binding:
+  scope: enforcement
+  require: decide_semantics.unconditional_catchall_required == true and decide_semantics.fail_closed_default_matches_rfc_0003 == true
+  severity: error
+  message: "Every policy declaration must end with an unconditional catch-all decide clause, mirroring RFC-0003's fail-closed-by-default posture applied to policy decisions"
+
+constraint downstream_audit_binding:
+  scope: process
+  require: downstream_audit_required.pluresdb_px == "exhaustive_match_check" and downstream_audit_required.pares_radix == "exhaustive_match_check" and downstream_audit_required.pares_agens == "exhaustive_match_check"
+  severity: error
+  message: "Follow-on implementation PR must audit exhaustive matches over any enum gaining a RelationDecl/PolicyDecl arm in all three downstream repos before merge"
+
+constraint adr_0038_not_required_to_change:
+  scope: process
+  require: honesty_note.adr_0038_found_in_pares_radix == true and honesty_note.adr_0038_requires_change_for_this_rfc == false
+  severity: error
+  message: "This RFC must cite ADR-0038 as read and confirm this RFC's scope requires no change to it; re-basing ADR-0038 onto relation/policy constructs is optional later work"
+
+contract policy_matches_adr_0038_precedence_shape:
+  given: "ADR-0038's most-specific-wins policy scope resolution (host > plugin > global) built from existing .px/PluresDB primitives"
+  when: "The policy/decide construct for this praxis-lang slice is defined"
+  then: "decide clauses are evaluated in first-match-wins declaration order with a mandatory unconditional catch-all, the same precedence shape ADR-0038 established at the host/storage layer, restated as a language-level construct"
+  threshold: 1.0
+  examples:
+    - input: "ADR-0038: policy:host:H:name -> policy:plugin:P:name -> policy:global:name, first hit wins"
+      expect: "decide clause ordering: most specific condition first, unconditional catchall last, first match wins"
+
+contract relation_generalizes_constraint_eval:
+  given: "pares-radix's constraint-eval.px flat single-namespace predicate model (given, check, severity)"
+  when: "relation and infer are added as a language-level relational-inference capability"
+  then: "an extensional relation is a typed view over existing fact declarations matching its field shape, requiring no new storage; an intensional relation is derived via infer rules unioned across all matching rules for that relation name"
+  threshold: 1.0
+  examples:
+    - input: "fact declarations matching entity eligible_reviewer's shape"
+      expect: "extensional relation eligible_reviewer includes every such fact as a member with no infer rule required"
+
+contract no_downstream_change_required:
+  given: "pluresdb-px, pares-radix (including ADR-0038), and pares-agens as they exist today"
+  when: "RFC-0004 is ratified as a spec-only design"
+  then: "none of the three repos require any code change; ADR-0038 remains valid and unmodified; any future re-basing of ADR-0038 onto relation/policy constructs is separate, optional, later work gated on a follow-on implementation RFC"
+  threshold: 1.0
+  examples:
+    - input: "ADR-0038's policy:global:*/policy:plugin:*/policy:host:* PluresDB key convention"
+      expect: "continues to function unchanged; RFC-0004 does not require pares-radix to adopt relation/policy constructs"
+
+scenario verify_self_hosting:
+  given: "This RFC file authored in current .px syntax (no relation/infer/policy/decide sugar)"
+  setup:
+    define $path = "docs/rfcs/RFC-0004-policy-relational-inference.px"
+  run: parse_px {input: $path}
+  expect:
+    - parse_succeeds {}
+    - NOT error_raised {}
