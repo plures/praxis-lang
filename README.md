@@ -14,10 +14,12 @@ Broad language support via NAPI.
 > for the design and [`docs/epic/PRAXIS-LANG-TRACKER.md`](docs/epic/PRAXIS-LANG-TRACKER.md)
 > for full migration history.
 >
-> Rust crates are published as `cargo publish --dry-run`-verified in CI
-> pending a `CARGO_REGISTRY_TOKEN` repo secret; the NAPI/npm package
-> (`@plures/px-napi`) is likewise `npm publish --dry-run`-verified pending an
-> `NPM_TOKEN` secret. See `.github/workflows/release.yml` for exact status.
+> Rust crates are release-validated in CI with `cargo publish --dry-run` for
+> the dependency root and `cargo package --workspace` for the coordinated
+> workspace release, pending a `CARGO_REGISTRY_TOKEN` repo secret; the
+> NAPI/npm package (`@plures/px-napi`) is likewise `npm publish --dry-run`-
+> verified pending an `NPM_TOKEN` secret. See `.github/workflows/release.yml`
+> for exact status.
 
 ## Crate layout
 
