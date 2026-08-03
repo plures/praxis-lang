@@ -32,10 +32,8 @@
 //!   `praxis-lang`, so a generator depending on another repo's working copy
 //!   could not be regenerated deterministically in this repo's own gate.
 
-use std::collections::BTreeMap;
-
 use px_schema::projection::build_json_schema;
-use schemars::schema::{Schema, SchemaObject};
+use serde_json::Value;
 
 /// One top-level `.px` statement construct, in a fixed, curated display order
 /// matching `px_ast::Statement`'s variant order (the actual sum type).
@@ -167,23 +165,28 @@ fn keyword_static(keyword: &str) -> &'static str {
 }
 
 /// Render one construct's schema fields as `- field: type (optional)` lines.
-fn render_fields(def_name: &str, definitions: &BTreeMap<String, Schema>) -> String {
+fn render_fields(def_name: &str, definitions: &serde_json::Map<String, Value>) -> String {
     let mut out = String::new();
-    let Some(Schema::Object(obj)) = definitions.get(def_name) else {
+    let Some(obj) = definitions.get(def_name) else {
         out.push_str("  (schema definition not found — px-ast/px-schema drift)\n");
         return out;
     };
-    let Some(ov) = &obj.object else {
+    let Some(properties) = obj.get("properties").and_then(Value::as_object) else {
         out.push_str("  (no object shape — leaf/alias type)\n");
         return out;
     };
-    if ov.properties.is_empty() {
+    if properties.is_empty() {
         out.push_str("  (no fields)\n");
         return out;
     }
-    for (field, sub) in &ov.properties {
+    let required: Vec<&str> = obj
+        .get("required")
+        .and_then(Value::as_array)
+        .map(|a| a.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    for (field, sub) in properties {
         let ty = field_type_label(sub);
-        let req = if ov.required.contains(field) {
+        let req = if required.contains(&field.as_str()) {
             ""
         } else {
             " (optional)"
@@ -193,53 +196,57 @@ fn render_fields(def_name: &str, definitions: &BTreeMap<String, Schema>) -> Stri
     out
 }
 
-fn field_type_label(schema: &Schema) -> String {
-    match schema {
-        Schema::Bool(_) => "any".to_string(),
-        Schema::Object(o) => field_type_label_obj(o),
+fn field_type_label(schema: &Value) -> String {
+    if schema.is_boolean() {
+        return "any".to_string();
     }
+    field_type_label_obj(schema)
 }
 
-fn field_type_label_obj(obj: &SchemaObject) -> String {
-    if let Some(r) = &obj.reference {
+fn field_type_label_obj(obj: &Value) -> String {
+    if let Some(r) = obj.get("$ref").and_then(Value::as_str) {
         return r.rsplit('/').next().unwrap_or(r).to_string();
     }
-    if let Some(sub) = &obj.subschemas {
-        if let Some(list) = sub.any_of.as_ref().or(sub.one_of.as_ref()) {
-            let parts: Vec<String> = list
-                .iter()
-                .map(field_type_label)
-                .filter(|s| s != "null")
-                .collect();
-            if parts.len() == 1 {
-                return format!("optional[{}]", parts[0]);
-            }
-            if !parts.is_empty() {
-                return parts.join(" | ");
-            }
+    if let Some(list) = obj
+        .get("anyOf")
+        .or_else(|| obj.get("oneOf"))
+        .and_then(Value::as_array)
+    {
+        let parts: Vec<String> = list
+            .iter()
+            .map(field_type_label)
+            .filter(|s| s != "null")
+            .collect();
+        if parts.len() == 1 {
+            return format!("optional[{}]", parts[0]);
+        }
+        if !parts.is_empty() {
+            return parts.join(" | ");
         }
     }
-    if let Some(it) = &obj.instance_type {
-        use schemars::schema::{InstanceType, SingleOrVec};
-        let name_of = |t: &InstanceType| -> &'static str {
+    if let Some(it) = obj.get("type") {
+        let name_of = |t: &str| -> &'static str {
             match t {
-                InstanceType::Null => "null",
-                InstanceType::Boolean => "bool",
-                InstanceType::Object => "object",
-                InstanceType::Array => "array",
-                InstanceType::Number => "float",
-                InstanceType::String => "string",
-                InstanceType::Integer => "int",
+                "null" => "null",
+                "boolean" => "bool",
+                "object" => "object",
+                "array" => "array",
+                "number" => "float",
+                "string" => "string",
+                "integer" => "int",
+                _ => "any",
             }
         };
         return match it {
-            SingleOrVec::Single(t) => name_of(t).to_string(),
-            SingleOrVec::Vec(ts) => ts
+            Value::String(t) => name_of(t).to_string(),
+            Value::Array(ts) => ts
                 .iter()
-                .map(|t| name_of(t).to_string())
-                .filter(|s| s != "null")
+                .filter_map(Value::as_str)
+                .map(name_of)
+                .filter(|s| *s != "null")
                 .collect::<Vec<_>>()
                 .join(" | "),
+            _ => "any".to_string(),
         };
     }
     "any".to_string()
@@ -251,6 +258,11 @@ fn field_type_label_obj(obj: &SchemaObject) -> String {
 /// call, so "generated" always means the same deterministic projection.
 pub fn build_cheatsheet(corpus: &[CorpusFile<'_>]) -> String {
     let root = build_json_schema();
+    let empty_definitions = serde_json::Map::new();
+    let definitions = root
+        .get("definitions")
+        .and_then(Value::as_object)
+        .unwrap_or(&empty_definitions);
     let mut out = String::new();
 
     out.push_str("# .px Grammar & AST Cheatsheet\n\n");
@@ -280,7 +292,7 @@ pub fn build_cheatsheet(corpus: &[CorpusFile<'_>]) -> String {
     for (variant, def_name, keyword) in STATEMENT_CONSTRUCTS {
         out.push_str(&format!("### `{keyword}` — {variant} ({def_name})\n\n"));
         out.push_str("**Fields (from px-ast, live projection):**\n\n");
-        out.push_str(&render_fields(def_name, &root.definitions));
+        out.push_str(&render_fields(def_name, definitions));
         out.push('\n');
 
         // Only look up one example per distinct keyword text (DataflowProcedure
