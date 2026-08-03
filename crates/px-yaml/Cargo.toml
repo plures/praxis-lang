@@ -9,7 +9,7 @@ rust-version.workspace = true
 description = "YAML authoring surface for .px, round-tripping through px-ast. Not a second source of truth."
 
 [dependencies]
-px-ast = { path = "../px-ast" }
+px-ast = { path = "../px-ast", version = "0.1.0" }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
 # ast_eq compares the canonical serde encoding of two documents (most px-ast
@@ -17,4 +17,4 @@ serde_yaml = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-px-compiler = { path = "../px-compiler" }
+px-compiler = { path = "../px-compiler", version = "0.1.0" }

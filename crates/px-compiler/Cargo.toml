@@ -9,6 +9,6 @@ rust-version.workspace = true
 description = "The .px compiler: source text into AST into IR."
 
 [dependencies]
-px-ast = { path = "../px-ast" }
-px-grammar = { path = "../px-grammar" }
+px-ast = { path = "../px-ast", version = "0.1.0" }
+px-grammar = { path = "../px-grammar", version = "0.1.0" }
 pest = { workspace = true }
