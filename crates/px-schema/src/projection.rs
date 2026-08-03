@@ -18,8 +18,9 @@
 //! from the AST (C-DRIFT-001).
 
 use px_ast::{PxDocument, PX_AST_VERSION};
-use schemars::schema::{RootSchema, Schema, SchemaObject};
-use schemars::schema_for;
+use schemars::generate::{SchemaGenerator, SchemaSettings};
+use schemars::Schema;
+use serde_json::Value;
 
 /// Canonical file name for the generated JSON Schema artifact.
 pub const JSON_SCHEMA_FILE: &str = "px.schema.json";
@@ -30,22 +31,25 @@ pub const PX_SCHEMA_FILE: &str = "px.schema.px";
 /// `px-ast` via `schemars`. The `x-px-ast-version` extension records the AST
 /// crate version that produced the schema.
 ///
-/// `schemars` orders `definitions` in a `BTreeMap`, so this output is
-/// deterministic across runs/platforms — a prerequisite for the drift gate.
-pub fn build_json_schema() -> RootSchema {
-    let mut root = schema_for!(PxDocument);
+/// `schemars` serializes schema keywords in a fixed, canonical order (with
+/// `definitions` always last), so this output is deterministic across
+/// runs/platforms — a prerequisite for the drift gate.
+pub fn build_json_schema() -> Schema {
+    let generator = SchemaGenerator::new(SchemaSettings::draft07());
+    let mut root = generator.into_root_schema_for::<PxDocument>();
     // Stamp the producing AST version into the schema metadata so a `.px`
     // document can be validated against the exact revision that emitted it.
-    root.schema.extensions.insert(
+    root.insert(
         "x-px-ast-version".to_string(),
-        serde_json::Value::String(PX_AST_VERSION.to_string()),
+        Value::String(PX_AST_VERSION.to_string()),
     );
     // Give the root schema a stable title/id independent of struct renames.
-    root.schema
-        .metadata
-        .get_or_insert_with(Default::default)
-        .title
-        .get_or_insert_with(|| "Praxis Intent Language (.px) — px-ast projection".to_string());
+    if root.get("title").is_none() {
+        root.insert(
+            "title".to_string(),
+            Value::String("Praxis Intent Language (.px) — px-ast projection".to_string()),
+        );
+    }
     root
 }
 
@@ -53,8 +57,7 @@ pub fn build_json_schema() -> RootSchema {
 /// with a trailing newline (LF). Written as raw bytes to a path by the bin.
 pub fn json_schema_string() -> String {
     let root = build_json_schema();
-    let mut s =
-        serde_json::to_string_pretty(&root).expect("RootSchema is always JSON-serializable");
+    let mut s = serde_json::to_string_pretty(&root).expect("Schema is always JSON-serializable");
     s.push('\n');
     s
 }
@@ -90,13 +93,13 @@ pub fn px_schema_string() -> String {
 
     // Root document shape first.
     out.push_str("# ── root document ──────────────────────────────────────────────\n");
-    emit_object("PxDocument", &root.schema, &mut out);
+    emit_object("PxDocument", root.as_value(), &mut out);
 
     // Then every definition, in deterministic (BTreeMap) order.
     out.push_str("\n# ── constructs & types (projected from px-ast) ─────────────────\n");
-    for (name, schema) in &root.definitions {
-        if let Schema::Object(obj) = schema {
-            emit_object(name, obj, &mut out);
+    if let Some(defs) = root.get("definitions").and_then(Value::as_object) {
+        for (name, schema) in defs {
+            emit_object(name, schema, &mut out);
         }
     }
 
@@ -104,7 +107,7 @@ pub fn px_schema_string() -> String {
 }
 
 /// Emit one `.px`-syntax `schema <Name>:` block for a schema object.
-fn emit_object(name: &str, obj: &SchemaObject, out: &mut String) {
+fn emit_object(name: &str, obj: &Value, out: &mut String) {
     // Adjacently-tagged enums surface as `oneOf`/`anyOf` of subschemas that
     // each pin `kind` to a const. Detect and render them as variant lists.
     if let Some(variants) = enum_variants(obj) {
@@ -130,15 +133,19 @@ fn emit_object(name: &str, obj: &SchemaObject, out: &mut String) {
     }
 
     // Object with properties.
-    if let Some(ov) = &obj.object {
+    if let Some(properties) = obj.get("properties").and_then(Value::as_object) {
         out.push_str(&format!("schema {name}:\n"));
-        if ov.properties.is_empty() {
+        if properties.is_empty() {
             out.push_str("  # (no fields)\n");
         }
-        let required = &ov.required;
-        for (field, sub) in &ov.properties {
+        let required: Vec<&str> = obj
+            .get("required")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default();
+        for (field, sub) in properties {
             let ty = type_label(sub);
-            let req = if required.contains(field) {
+            let req = if required.contains(&field.as_str()) {
                 ""
             } else {
                 " optional"
@@ -155,18 +162,18 @@ fn emit_object(name: &str, obj: &SchemaObject, out: &mut String) {
 
 /// If this object is a tagged enum (`oneOf`/`anyOf` of variants each fixing
 /// `kind` to a const), return the ordered list of variant names.
-fn enum_variants(obj: &SchemaObject) -> Option<Vec<String>> {
-    let sub = obj.subschemas.as_ref()?;
-    let list = sub.one_of.as_ref().or(sub.any_of.as_ref())?;
+fn enum_variants(obj: &Value) -> Option<Vec<String>> {
+    let list = obj
+        .get("oneOf")
+        .or_else(|| obj.get("anyOf"))
+        .and_then(Value::as_array)?;
     let mut names = Vec::new();
     for s in list {
-        if let Schema::Object(o) = s {
-            if let Some(k) = variant_kind_const(o) {
-                names.push(k);
-            } else if let Some(vals) = string_enum_values(o) {
-                // A bare unit variant rendered as {"enum":["Name"]}.
-                names.extend(vals);
-            }
+        if let Some(k) = variant_kind_const(s) {
+            names.push(k);
+        } else if let Some(vals) = string_enum_values(s) {
+            // A bare unit variant rendered as {"enum":["Name"]}.
+            names.extend(vals);
         }
     }
     if names.is_empty() {
@@ -178,93 +185,93 @@ fn enum_variants(obj: &SchemaObject) -> Option<Vec<String>> {
 
 /// Extract the `const`/single-`enum` value of the `kind` property of a tagged
 /// variant subschema.
-fn variant_kind_const(obj: &SchemaObject) -> Option<String> {
-    let ov = obj.object.as_ref()?;
-    let kind = ov.properties.get("kind")?;
-    if let Schema::Object(ko) = kind {
-        if let Some(serde_json::Value::String(s)) = &ko.const_value {
-            return Some(s.clone());
-        }
-        if let Some(first) = string_enum_values(ko).and_then(|v| v.into_iter().next()) {
-            return Some(first);
-        }
+fn variant_kind_const(obj: &Value) -> Option<String> {
+    let kind = obj.get("properties")?.get("kind")?;
+    if let Some(Value::String(s)) = kind.get("const") {
+        return Some(s.clone());
+    }
+    if let Some(first) = string_enum_values(kind).and_then(|v| v.into_iter().next()) {
+        return Some(first);
     }
     None
 }
 
 /// If this object is a plain string enum (`{"enum": ["A","B"]}` or a set of
 /// string consts), return the values.
-fn string_enum_values(obj: &SchemaObject) -> Option<Vec<String>> {
-    if let Some(vals) = &obj.enum_values {
-        let strs: Vec<String> = vals
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
-        if strs.len() == vals.len() && !strs.is_empty() {
-            return Some(strs);
-        }
+fn string_enum_values(obj: &Value) -> Option<Vec<String>> {
+    let vals = obj.get("enum")?.as_array()?;
+    let strs: Vec<String> = vals
+        .iter()
+        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+        .collect();
+    if strs.len() == vals.len() && !strs.is_empty() {
+        return Some(strs);
     }
     None
 }
 
 /// A short, legible type label for a field subschema (best-effort projection
 /// of the JSON-Schema type into `.px`-ish notation).
-fn type_label(schema: &Schema) -> String {
-    match schema {
-        Schema::Bool(_) => "any".to_string(),
-        Schema::Object(o) => type_label_obj(o),
+fn type_label(schema: &Value) -> String {
+    if schema.is_boolean() {
+        return "any".to_string();
     }
+    type_label_obj(schema)
 }
 
-fn type_label_obj(obj: &SchemaObject) -> String {
+fn type_label_obj(obj: &Value) -> String {
     // $ref to a named definition.
-    if let Some(r) = &obj.reference {
+    if let Some(r) = obj.get("$ref").and_then(Value::as_str) {
         return ref_name(r);
     }
     // Nullable / Option<T> comes through as `anyOf: [T, null]` or a type array.
-    if let Some(sub) = &obj.subschemas {
-        if let Some(list) = sub.any_of.as_ref().or(sub.one_of.as_ref()) {
-            let parts: Vec<String> = list
-                .iter()
-                .map(type_label)
-                .filter(|s| s != "null")
-                .collect();
-            if parts.len() == 1 {
-                return format!("optional[{}]", parts[0]);
-            }
-            if !parts.is_empty() {
-                return parts.join(" | ");
-            }
+    if let Some(list) = obj
+        .get("anyOf")
+        .or_else(|| obj.get("oneOf"))
+        .and_then(Value::as_array)
+    {
+        let parts: Vec<String> = list
+            .iter()
+            .map(type_label)
+            .filter(|s| s != "null")
+            .collect();
+        if parts.len() == 1 {
+            return format!("optional[{}]", parts[0]);
+        }
+        if !parts.is_empty() {
+            return parts.join(" | ");
         }
     }
     // Instance type(s).
-    if let Some(it) = &obj.instance_type {
-        use schemars::schema::{InstanceType, SingleOrVec};
-        let name_of = |t: &InstanceType| -> &'static str {
+    if let Some(it) = obj.get("type") {
+        let name_of = |t: &str| -> &'static str {
             match t {
-                InstanceType::Null => "null",
-                InstanceType::Boolean => "bool",
-                InstanceType::Object => "object",
-                InstanceType::Array => "array",
-                InstanceType::Number => "float",
-                InstanceType::String => "string",
-                InstanceType::Integer => "int",
+                "null" => "null",
+                "boolean" => "bool",
+                "object" => "object",
+                "array" => "array",
+                "number" => "float",
+                "string" => "string",
+                "integer" => "int",
+                _ => "any",
             }
         };
         match it {
-            SingleOrVec::Single(t) => {
+            Value::String(t) => {
                 let base = name_of(t);
-                if *base == *"array" {
+                if base == "array" {
                     if let Some(items) = array_item_label(obj) {
                         return format!("list[{items}]");
                     }
                 }
                 return base.to_string();
             }
-            SingleOrVec::Vec(ts) => {
+            Value::Array(ts) => {
                 let parts: Vec<String> = ts
                     .iter()
-                    .map(|t| name_of(t).to_string())
+                    .filter_map(Value::as_str)
+                    .map(name_of)
+                    .map(str::to_string)
                     .filter(|s| s != "null")
                     .collect();
                 if parts.len() == 1 {
@@ -272,21 +279,20 @@ fn type_label_obj(obj: &SchemaObject) -> String {
                 }
                 return parts.join(" | ");
             }
+            _ => {}
         }
     }
     "any".to_string()
 }
 
 /// Item type label for an array schema, if present.
-fn array_item_label(obj: &SchemaObject) -> Option<String> {
-    use schemars::schema::SingleOrVec;
-    let arr = obj.array.as_ref()?;
-    match arr.items.as_ref()? {
-        SingleOrVec::Single(s) => Some(type_label(s)),
-        SingleOrVec::Vec(v) => {
+fn array_item_label(obj: &Value) -> Option<String> {
+    match obj.get("items")? {
+        Value::Array(v) => {
             let parts: Vec<String> = v.iter().map(type_label).collect();
             Some(format!("[{}]", parts.join(", ")))
         }
+        single => Some(type_label(single)),
     }
 }
 

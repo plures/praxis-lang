@@ -359,6 +359,7 @@ version = "0.0.0"
 dependencies = [
  "px-schema",
  "schemars",
+ "serde_json",
 ]
 
 [[package]]
