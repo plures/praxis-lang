@@ -72,11 +72,8 @@ The checker is a **lint-like tool**, not a proof assistant.
   not add keywords or declaration forms to the grammar.
 - **No mandatory verification gate.** Whether verification is run as a CI check, an
   editor lint, or not at all is a host/tooling decision. The checker is opt-in.
-- **No cross-document analysis.** The checker operates on a single `.px` document (or a
-  resolved import set). Cross-repository or cross-service verification is out of scope.
-- **No performance guarantees on checker execution.** While properties are decidable,
-  this RFC does not commit to specific time/space bounds for the checker
-  implementation.
+- **No cross-document analysis.** The checker operates on a single `.px` document plus its resolved import closure. Cross-repository or cross-service verification is out of scope.
+- **No performance SLA.** Properties are designed to be polynomial (or bounded-exponential in an explicit parameter), but this RFC does not mandate a particular implementation strategy or resource budget.
 
 ---
 
