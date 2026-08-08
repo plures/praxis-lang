@@ -201,7 +201,7 @@ constraint downstream_no_change:
   scope: process
   require: downstream_audit_required.pares_radix == "no_change_required" and downstream_audit_required.pares_agens == "no_change_required"
   severity: error
-  message: "No downstream repo requires any code change for this spec-only RFC"
+  message: "No pares-radix or pares-agens code change is required for this spec-only RFC"
 
 contract workflow_lowers_to_procedure:
   given: "RFC-0001's four semantic-core primitives (Declaration, Assertion, Procedure, Scenario)"
