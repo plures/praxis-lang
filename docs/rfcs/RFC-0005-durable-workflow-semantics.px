@@ -1,0 +1,249 @@
+// RFC-0005-durable-workflow-semantics.px
+// Self-hosting specification for the durable-workflow-semantics design.
+// Per the RFC's own scope, this file uses ONLY current .px syntax (no `workflow`,
+// `checkpoint`, `suspend`, or `compensate` constructs, since those don't exist until
+// implementation). It models the design's scope, boundaries, and acceptance
+// criteria the same way RFC-0001/0002/0003/0004's companion files modeled their own
+// designs.
+//
+// Exercises: config, entity, fact, function, constraint, contract, scenario.
+
+config rfc_0005:
+  title: "Durable Workflow Semantics"
+  status: "draft"
+  author: "kbristol"
+  workstream: "WS-1"
+  gates_on: "RFC-0004"
+
+// The proposed workflow shape (modeled as an entity + facts since .px has no
+// native workflow declaration form at surface level; this models the design,
+// not a shipped construct).
+entity ProposedWorkflow:
+  prefix: "wf"
+  fields:
+    name: string
+    has_checkpoint: bool
+    has_suspend: bool
+    has_compensation: bool
+
+fact workflow_onboard_new_user:
+  name: string
+  has_checkpoint: bool
+  has_suspend: bool
+  has_compensation: bool
+
+fact workflow_deploy_service:
+  name: string
+  has_checkpoint: bool
+  has_suspend: bool
+  has_compensation: bool
+
+entity ProposedCheckpoint:
+  prefix: "ckpt"
+  fields:
+    name: string
+    workflow: string
+    persists_state: bool
+
+fact checkpoint_after_account_created:
+  name: string
+  workflow: string
+  persists_state: bool
+
+entity ProposedSuspend:
+  prefix: "susp"
+  fields:
+    name: string
+    workflow: string
+    event: string
+    has_timeout: bool
+
+fact suspend_await_email_verification:
+  name: string
+  workflow: string
+  event: string
+  has_timeout: bool
+
+entity ProposedCompensation:
+  prefix: "comp"
+  fields:
+    step_name: string
+    workflow: string
+    is_noop: bool
+
+fact compensation_create_account:
+  step_name: string
+  workflow: string
+  is_noop: bool
+
+fact compensation_send_welcome_email:
+  step_name: string
+  workflow: string
+  is_noop: bool
+
+config scope_boundaries:
+  specific_persistence_engine: "out_of_scope"
+  new_expression_syntax: "out_of_scope"
+  distributed_workflow_coordination: "deferred_to_future_rfc"
+  workflow_versioning: "deferred_to_future_rfc"
+  static_compensation_verification: "deferred_to_rfc_0006"
+  change_existing_procedure_evaluation: "out_of_scope"
+  change_rfc_0003_effect_model: "out_of_scope"
+
+config compatibility_policy:
+  preserve_existing_parse: true
+  break_existing_files: false
+  workflow_is_additive: true
+  no_change_to_existing_lowering_table_rows: true
+  existing_procedures_remain_ephemeral: true
+
+config checkpoint_semantics:
+  is_sequencing_barrier: true
+  persists_completed_step_results: true
+  persists_variable_environment: true
+  resume_from_last_checkpoint: true
+
+config suspend_semantics:
+  implicit_checkpoint_before_yield: true
+  releases_held_resources: true
+  resumes_on_event_arrival: true
+  supports_timeout: true
+
+config compensation_semantics:
+  reverse_declaration_order: true
+  compensation_actions_must_be_idempotent: true
+  noop_explicitly_declared: true
+  enables_static_analysis: true
+
+config idempotency_semantics:
+  annotation_is_contract: true
+  runtime_may_reexecute_idempotent_steps: true
+  runtime_must_deduplicate_non_idempotent: true
+
+config policy_decision_durability:
+  before_checkpoint_is_committed: true
+  after_checkpoint_is_recomputed: true
+  consistent_with_general_checkpoint_rule: true
+
+config relational_query_durability:
+  before_checkpoint_is_committed: true
+  after_checkpoint_is_rederived: true
+  rederivation_safe_because_infer_is_pure: true
+
+config downstream_audit_required:
+  pluresdb_px: "exhaustive_match_check"
+  pares_radix: "no_change_required"
+  pares_agens: "no_change_required"
+
+function lowers_workflow_decl(construct: string) -> string:
+  mode: deterministic
+  """Map the proposed workflow declaration to its semantic-core primitive (Procedure, per RFC-0001's table: a workflow is an ordered/reactive set of steps with effects and durability annotations)."""
+
+function lowers_checkpoint_step(construct: string) -> string:
+  mode: deterministic
+  """Map a checkpoint to its semantic-core primitive (Procedure step: an effectful step that persists state)."""
+
+function lowers_suspend_step(construct: string) -> string:
+  mode: deterministic
+  """Map a suspend to its semantic-core primitive (Procedure step: an effectful yield step that registers interest in an external event)."""
+
+function lowers_compensation_block(construct: string) -> string:
+  mode: deterministic
+  """Map a compensation block to its semantic-core primitive (Procedure: an ordered sub-procedure triggered on failure for backward recovery)."""
+
+function lowers_idempotency_annotation(construct: string) -> string:
+  mode: deterministic
+  """Map an idempotency annotation to its semantic-core primitive (Declaration: metadata property on a step, analogous to a type annotation)."""
+
+constraint no_breaking_parse:
+  scope: compatibility
+  require: compatibility_policy.break_existing_files == false
+  severity: error
+  message: "RFC-0005 must not change any existing production's syntax"
+
+constraint workflow_additive_only:
+  scope: scope
+  require: compatibility_policy.workflow_is_additive == true and compatibility_policy.no_change_to_existing_lowering_table_rows == true
+  severity: error
+  message: "workflow/checkpoint/suspend/compensate are new additive construct kinds; no existing construct's syntax or lowering-table row changes"
+
+constraint existing_procedures_unaffected:
+  scope: compatibility
+  require: compatibility_policy.existing_procedures_remain_ephemeral == true
+  severity: error
+  message: "Existing DataflowProcedure and LegacyProcedure remain ephemeral; durability is opt-in via the workflow modifier only"
+
+constraint no_new_expression_syntax:
+  scope: scope
+  require: scope_boundaries.new_expression_syntax == "out_of_scope"
+  severity: error
+  message: "Durable-workflow constructs attach to procedure-level step annotations, not new operators or literal forms in Expr"
+
+constraint no_effect_model_change:
+  scope: scope
+  require: scope_boundaries.change_rfc_0003_effect_model == "out_of_scope"
+  severity: error
+  message: "RFC-0005 does not modify RFC-0003's Effect/CapabilityGrant model; durable-workflow operations are host-provided capabilities using the existing mechanism"
+
+constraint compensation_enables_verification:
+  scope: semantics
+  require: compensation_semantics.enables_static_analysis == true
+  severity: error
+  message: "Compensation is a language-level declaration enabling RFC-0006 static analysis of compensation coverage"
+
+constraint policy_durability_consistent:
+  scope: semantics
+  require: policy_decision_durability.consistent_with_general_checkpoint_rule == true
+  severity: error
+  message: "Policy decisions follow the same checkpoint rule as all other step results: committed before checkpoint, recomputed after"
+
+constraint downstream_no_change:
+  scope: process
+  require: downstream_audit_required.pares_radix == "no_change_required" and downstream_audit_required.pares_agens == "no_change_required"
+  severity: error
+  message: "No pares-radix or pares-agens code change is required for this spec-only RFC"
+
+contract workflow_lowers_to_procedure:
+  given: "RFC-0001's four semantic-core primitives (Declaration, Assertion, Procedure, Scenario)"
+  when: "A workflow declaration is defined with checkpoints, suspends, and compensations"
+  then: "The workflow lowers to Procedure (an ordered/reactive set of steps with effects), with checkpoint/suspend/compensate as effectful steps within that procedure"
+  threshold: 1.0
+  examples:
+    - input: "workflow onboard_new_user with steps, checkpoints, and suspend points"
+      expect: "lowers to Procedure with durability annotations as step-level metadata"
+
+contract checkpoint_is_effect:
+  given: "RFC-0003's effect/capability model where effectful operations require host-provided capabilities"
+  when: "A checkpoint step persists workflow state to durable storage"
+  then: "checkpoint_persist is a host-provided capability injected through FunctionRegistry, declared in the workflow's effects list"
+  threshold: 1.0
+  examples:
+    - input: "checkpoint after_account_created in a workflow"
+      expect: "requires checkpoint_persist capability; state persisted includes completed step results and variable environment"
+
+contract compensation_reverse_order:
+  given: "A workflow with steps 1, 2, 3 where steps 1 and 2 have committed side effects"
+  when: "Step 3 fails"
+  then: "Compensation actions for steps 2 and 1 are invoked in reverse declaration order (backward recovery, saga pattern)"
+  threshold: 1.0
+  examples:
+    - input: "step 3 fails after steps 1 (create_account) and 2 (send_email) committed"
+      expect: "compensate step 2 first, then compensate step 1"
+
+contract no_downstream_change_required:
+  given: "pluresdb-px, pares-radix, and pares-agens as they exist today"
+  when: "RFC-0005 is ratified as a spec-only design"
+  then: "none of the three repos require any code change; existing orchestration patterns in pares-radix continue unchanged"
+  threshold: 1.0
+  examples:
+    - input: "pares-radix orch:stage: key-prefix orchestration procedures"
+      expect: "continues to function unchanged; RFC-0005 does not require pares-radix to adopt workflow constructs"
+
+scenario verify_self_hosting:
+  given: "This RFC file authored in current .px syntax (no workflow/checkpoint/suspend/compensate sugar)"
+  setup:
+    define $path = "docs/rfcs/RFC-0005-durable-workflow-semantics.px"
+  run: parse_px {input: $path}
+  expect:
+    - parse_succeeds {}
+    - NOT error_raised {}

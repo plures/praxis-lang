@@ -1,0 +1,233 @@
+// RFC-0006-bounded-verification.px
+// Self-hosting specification for the bounded-verification design.
+// Per the RFC's own scope, this file uses ONLY current .px syntax (no new
+// constructs, since the checker is an analysis pass that does not add syntax).
+// It models the design's scope, boundaries, and acceptance criteria the same way
+// RFC-0001/0002/0003/0004/0005's companion files modeled their own designs.
+//
+// Exercises: config, entity, fact, function, constraint, contract, scenario.
+
+config rfc_0006:
+  title: "Bounded Verification"
+  status: "draft"
+  author: "kbristol"
+  workstream: "WS-1"
+  gates_on: "RFC-0005"
+
+// Verification properties modeled as entities and facts.
+entity VerificationProperty:
+  prefix: "vprop"
+  fields:
+    name: string
+    source_rfc: string
+    severity: string
+    decidable: bool
+
+fact property_no_cyclic_type_aliases:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_refinement_satisfiability:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_static_capability_coverage:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_unused_capability:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_policy_totality:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_relational_stratification:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_compensation_coverage:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_idempotency_consistency:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_checkpoint_reachability:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_unreachable_code:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_duplicate_declarations:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+fact property_import_resolution:
+  name: string
+  source_rfc: string
+  severity: string
+  decidable: bool
+
+entity CheckerDiagnostic:
+  prefix: "diag"
+  fields:
+    severity: string
+    property: string
+    message: string
+
+config scope_boundaries:
+  general_theorem_proving: "out_of_scope"
+  runtime_enforcement_changes: "out_of_scope"
+  new_surface_syntax: "out_of_scope"
+  mandatory_verification_gate: "out_of_scope"
+  cross_document_analysis: "deferred_to_future_rfc"
+  user_defined_properties: "deferred_to_future_rfc"
+
+config compatibility_policy:
+  preserve_existing_parse: true
+  break_existing_files: false
+  checker_is_optional_analysis_pass: true
+  no_lowering_table_changes: true
+  existing_evaluation_unmodified: true
+
+config bounded_constraint:
+  all_properties_decidable: true
+  no_undecidable_analysis: true
+  checker_is_lint_like_tool: true
+  polynomial_or_bounded_exponential_time: true
+
+config downstream_audit_required:
+  pluresdb_px: "no_change_required"
+  pares_radix: "no_change_required"
+  pares_agens: "no_change_required"
+
+function check_document(doc: string) -> string:
+  mode: deterministic
+  """Run the bounded-verification checker on a parsed Document, returning a list of diagnostics (errors, warnings, info) without modifying the AST."""
+
+function check_type_well_formedness(doc: string) -> string:
+  mode: deterministic
+  """Check for cyclic type aliases and trivially unsatisfiable refinement predicates in the document's type declarations."""
+
+function check_effect_coverage(doc: string) -> string:
+  mode: deterministic
+  """Verify that every call site declaring an effect is covered by the enclosing scope's capability grants; flag unused capabilities as warnings."""
+
+function check_policy_totality(doc: string) -> string:
+  mode: deterministic
+  """Verify that every policy's decide chain ends with an unconditional catch-all clause."""
+
+function check_relational_stratification(doc: string) -> string:
+  mode: deterministic
+  """Verify that the relation/infer dependency graph is acyclic and no relation appears negated in its own derivation chain."""
+
+function check_compensation_coverage(doc: string) -> string:
+  mode: deterministic
+  """Verify that every effectful workflow step has a declared compensate action (or explicit noop)."""
+
+function check_idempotency_consistency(doc: string) -> string:
+  mode: deterministic
+  """Flag non-idempotent steps after suspend points that lack deduplication support."""
+
+function check_checkpoint_reachability(doc: string) -> string:
+  mode: deterministic
+  """Verify that every suspend point is preceded by (or implicitly includes) a checkpoint."""
+
+constraint no_breaking_parse:
+  scope: compatibility
+  require: compatibility_policy.break_existing_files == false
+  severity: error
+  message: "RFC-0006 must not change any existing production's syntax"
+
+constraint checker_is_optional:
+  scope: scope
+  require: compatibility_policy.checker_is_optional_analysis_pass == true
+  severity: error
+  message: "The bounded-verification checker is opt-in; it does not gate parsing or evaluation unless the host opts in"
+
+constraint no_new_syntax:
+  scope: scope
+  require: scope_boundaries.new_surface_syntax == "out_of_scope"
+  severity: error
+  message: "RFC-0006 does not add new keywords or declaration forms to the grammar"
+
+constraint bounded_decidable:
+  scope: semantics
+  require: bounded_constraint.all_properties_decidable == true and bounded_constraint.no_undecidable_analysis == true
+  severity: error
+  message: "All verification properties must be decidable; the checker is a lint-like tool, not a theorem prover"
+
+constraint no_runtime_change:
+  scope: scope
+  require: scope_boundaries.runtime_enforcement_changes == "out_of_scope"
+  severity: error
+  message: "RFC-0006 adds a static analysis pass; it does not modify px-eval's runtime behavior"
+
+constraint downstream_no_change:
+  scope: process
+  require: downstream_audit_required.pluresdb_px == "no_change_required" and downstream_audit_required.pares_radix == "no_change_required" and downstream_audit_required.pares_agens == "no_change_required"
+  severity: error
+  message: "No downstream repo requires any code change for this spec-only RFC"
+
+contract checker_is_read_only:
+  given: "A parsed px_ast::Document from px_compiler::parse"
+  when: "The checker runs its verification properties against the document"
+  then: "The checker returns diagnostics without modifying the AST or producing any side effects"
+  threshold: 1.0
+  examples:
+    - input: "Document with a cyclic type alias A -> B -> A"
+      expect: "Diagnostic: error, property: no_cyclic_type_aliases, span pointing to the cycle"
+
+contract properties_cover_all_prior_rfcs:
+  given: "RFC-0002 (types), RFC-0003 (effects), RFC-0004 (policy/relational), RFC-0005 (workflows)"
+  when: "The checker's property set is defined"
+  then: "At least one verification property addresses each prior RFC's deferred static-analysis question"
+  threshold: 1.0
+  examples:
+    - input: "RFC-0003 deferred: can we statically verify effect coverage?"
+      expect: "Property: static_capability_coverage (error severity, decidable)"
+
+contract no_downstream_change_required:
+  given: "pluresdb-px, pares-radix, and pares-agens as they exist today"
+  when: "RFC-0006 is ratified as a spec-only design"
+  then: "none of the three repos require any code change; the checker is an optional tool in praxis-lang"
+  threshold: 1.0
+  examples:
+    - input: "pares-radix using .px procedures without the checker"
+      expect: "continues to function unchanged; checker adoption is optional"
+
+scenario verify_self_hosting:
+  given: "This RFC file authored in current .px syntax (no new constructs)"
+  setup:
+    define $path = "docs/rfcs/RFC-0006-bounded-verification.px"
+  run: parse_px {input: $path}
+  expect:
+    - parse_succeeds {}
+    - NOT error_raised {}
