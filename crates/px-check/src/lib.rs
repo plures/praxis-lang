@@ -15,7 +15,9 @@ use px_ast::{
 /// Contract for one named parameter of a callable action or procedure.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParameterContract {
-    pub value_type: TypeExpr,
+    /// `None` is an explicit dynamic-value boundary. It is limited to host
+    /// actions such as JSON field access; normal `.px` functions stay typed.
+    pub value_type: Option<TypeExpr>,
     pub required: bool,
 }
 
@@ -59,7 +61,7 @@ impl CallableContract {
         self.params.insert(
             name.into(),
             ParameterContract {
-                value_type,
+                value_type: Some(value_type),
                 required: true,
             },
         );
@@ -70,8 +72,24 @@ impl CallableContract {
         self.params.insert(
             name.into(),
             ParameterContract {
-                value_type,
+                value_type: Some(value_type),
                 required: false,
+            },
+        );
+        self
+    }
+
+    /// Require a value while deliberately preserving its dynamic type.
+    ///
+    /// This is a narrow interoperability escape hatch, not an untyped call:
+    /// the argument name, presence, callable identity and result contract are
+    /// still checked. Use it only at a JSON/host boundary.
+    pub fn required_any(mut self, name: impl Into<String>) -> Self {
+        self.params.insert(
+            name.into(),
+            ParameterContract {
+                value_type: None,
+                required: true,
             },
         );
         self
@@ -474,6 +492,10 @@ fn check_call(
     report: &mut CheckReport,
 ) {
     let action = &call.action.name;
+    if action == "append" {
+        check_append_builtin(call, procedure, step, variables, records, profile, report);
+        return;
+    }
     let Some(contract) = catalog.get(action) else {
         push(report, "PX1001", procedure, step, format!("unknown callable `{action}`; declare it in the host action catalog or a typed .px module"));
         return;
@@ -510,7 +532,11 @@ fn check_call(
         let actual = infer_value(
             value, variables, records, profile, procedure, step, report, true,
         );
-        if !assignable(&actual, &parameter.value_type) {
+        if parameter
+            .value_type
+            .as_ref()
+            .is_some_and(|expected| !assignable(&actual, expected))
+        {
             push(
                 report,
                 "PX1005",
@@ -518,7 +544,7 @@ fn check_call(
                 step,
                 format!(
                     "call `{action}` argument `{name}` expects `{}`, got `{}`",
-                    parameter.value_type,
+                    parameter.value_type.as_ref().expect("checked above"),
                     display_static_type(&actual)
                 ),
             );
@@ -527,6 +553,45 @@ fn check_call(
 
     if let Some(output) = &call.output {
         variables.insert(output.name.clone(), contract.result.clone());
+    }
+}
+
+/// `append $list $item` is a core language mutation step handled by the PX
+/// executor, not a host-dispatched action. Its positional syntax is therefore
+/// checked here rather than being mistaken for an untyped host call.
+#[allow(clippy::too_many_arguments)]
+fn check_append_builtin(
+    call: &StepCall,
+    procedure: &str,
+    step: usize,
+    variables: &mut HashMap<String, StaticType>,
+    records: &HashMap<String, HashMap<String, TypeExpr>>,
+    profile: ExecutionProfile,
+    report: &mut CheckReport,
+) {
+    let StepCallArgs::Values(values) = &call.args else {
+        push(
+            report,
+            "PX1012",
+            procedure,
+            step,
+            "builtin `append` requires exactly two positional values: list and item".to_string(),
+        );
+        return;
+    };
+    if values.len() != 2 {
+        push(
+            report,
+            "PX1012",
+            procedure,
+            step,
+            "builtin `append` requires exactly two positional values: list and item".to_string(),
+        );
+        return;
+    }
+
+    for value in values {
+        let _ = infer_value(value, variables, records, profile, procedure, step, report, false);
     }
 }
 
@@ -847,6 +912,34 @@ mod tests {
             output: Some(id("now")),
         });
         assert!(check(&doc, &catalog, ExecutionProfile::STRICT).is_valid());
+    }
+
+    #[test]
+    fn recognizes_append_as_a_checked_language_builtin() {
+        let doc = procedure(StepCall {
+            action: id("append"),
+            args: StepCallArgs::Values(vec![
+                Value::Var(VarRef {
+                    name: id("task"),
+                    accessors: vec![],
+                    span: None,
+                }),
+                Value::String("item".into()),
+            ]),
+            output: None,
+        });
+        assert!(check(&doc, &ContractCatalog::default(), ExecutionProfile::STRICT).is_valid());
+    }
+
+    #[test]
+    fn rejects_malformed_append_builtin() {
+        let doc = procedure(StepCall {
+            action: id("append"),
+            args: StepCallArgs::Values(vec![Value::String("only one value".into())]),
+            output: None,
+        });
+        let report = check(&doc, &ContractCatalog::default(), ExecutionProfile::STRICT);
+        assert!(report.diagnostics.iter().any(|diagnostic| diagnostic.code == "PX1012"));
     }
 
     #[test]
