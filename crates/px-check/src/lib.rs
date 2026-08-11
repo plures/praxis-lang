@@ -722,14 +722,21 @@ fn assignable(actual: &StaticType, expected: &TypeExpr) -> bool {
     match expected {
         TypeExpr::Optional(inner) => match actual {
             StaticType::Null | StaticType::Any => true,
-            StaticType::Known(actual) => actual == inner.as_ref(),
+            StaticType::Known(actual) => same_type(actual, inner.as_ref()),
         },
         _ => match actual {
             StaticType::Any => true,
             StaticType::Null => false,
-            StaticType::Known(actual) => actual == expected,
+            StaticType::Known(actual) => same_type(actual, expected),
         },
     }
+}
+
+/// Compare the source language type, not parser source locations embedded in
+/// identifiers. The same named type can occur at a declaration and a call site
+/// with distinct spans, but it remains the same contract type.
+fn same_type(actual: &TypeExpr, expected: &TypeExpr) -> bool {
+    actual.to_string() == expected.to_string()
 }
 
 fn display_static_type(value_type: &StaticType) -> String {
@@ -940,6 +947,18 @@ mod tests {
         });
         let report = check(&doc, &ContractCatalog::default(), ExecutionProfile::STRICT);
         assert!(report.diagnostics.iter().any(|diagnostic| diagnostic.code == "PX1012"));
+    }
+
+    #[test]
+    fn compares_named_types_by_semantic_name() {
+        assert!(same_type(
+            &TypeExpr::Named(id("EvaluableTask")),
+            &TypeExpr::Named(id("EvaluableTask")),
+        ));
+        assert!(!same_type(
+            &TypeExpr::Named(id("EvaluableTask")),
+            &TypeExpr::Named(id("OtherTask")),
+        ));
     }
 
     #[test]
