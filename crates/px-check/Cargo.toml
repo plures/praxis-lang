@@ -1,15 +1,13 @@
 [package]
-name = "px-compiler"
+name = "px-check"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
-description = "The .px compiler: source text into AST into IR."
+description = "Fail-closed static contracts for Praxis (.px) procedures."
 
 [dependencies]
 px-ast = { path = "../px-ast", version = "0.1.0" }
-px-grammar = { path = "../px-grammar", version = "0.1.0" }
-px-check = { path = "../px-check", version = "0.1.0" }
-pest = { workspace = true }
+

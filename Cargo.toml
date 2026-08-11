@@ -8,6 +8,7 @@ members = [
     "crates/px-schema",
     "crates/px-schema-derive",
     "crates/px-compiler",
+    "crates/px-check",
     "crates/px-eval",
     "crates/px-yaml",
     "crates/px-napi",
