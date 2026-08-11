@@ -148,6 +148,64 @@ pub fn schema_ref_from_source(source: &str) -> Result<SchemaRef, String> {
     Ok(SchemaRef::new(id, version, fingerprint))
 }
 
+/// Validate the source-level half of a checked procedure contract.
+///
+/// This deliberately collects every defect that can be determined without an
+/// AST. Hosts should call it together with [`check`] rather than returning at
+/// the first malformed schema header or parser-skip marker. A syntactically
+/// valid document can therefore report its source pin, host catalog, and call
+/// contract problems in one activation response.
+pub fn check_source_contract(source: &str, catalog: &ContractCatalog) -> CheckReport {
+    let mut report = CheckReport::default();
+    let source_schema = match schema_ref_from_source(source) {
+        Ok(schema) => Some(schema),
+        Err(message) => {
+            push(&mut report, "PX1009", "<document>", 0, message);
+            None
+        }
+    };
+
+    match (source_schema.as_ref(), catalog.schema()) {
+        (_, None) => push(
+            &mut report,
+            "PX1010",
+            "<document>",
+            0,
+            "checked compilation requires a host schema contract".to_string(),
+        ),
+        (Some(actual), Some(expected)) if actual != expected => push(
+            &mut report,
+            "PX1011",
+            "<document>",
+            0,
+            format!(
+                "file pins {}@{}#{}, but host provides {}@{}#{}",
+                actual.id,
+                actual.version,
+                actual.fingerprint,
+                expected.id,
+                expected.version,
+                expected.fingerprint,
+            ),
+        ),
+        _ => {}
+    }
+
+    for (line, text) in source.lines().enumerate() {
+        if text.contains("[parser-skip]") {
+            push(
+                &mut report,
+                "PX1000",
+                "<document>",
+                line + 1,
+                "`[parser-skip]` is not executable Praxis; replace it with a supported declaration or remove it".to_string(),
+            );
+        }
+    }
+
+    report
+}
+
 /// The static type tracked for variables and call results.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StaticType {

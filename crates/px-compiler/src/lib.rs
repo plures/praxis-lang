@@ -27,7 +27,7 @@ pub use error::CompileError;
 use pest::Parser;
 use px_ast::{PxDocument, Statement};
 use px_check::{
-    check, schema_ref_from_source, CheckReport, ContractCatalog, Diagnostic, ExecutionProfile,
+    check, check_source_contract, CheckReport, ContractCatalog, Diagnostic, ExecutionProfile,
 };
 use px_grammar::{PxParser, Rule};
 
@@ -58,6 +58,24 @@ impl std::fmt::Display for CheckedCompileError {
 }
 
 impl std::error::Error for CheckedCompileError {}
+
+/// Complete checked-activation result for one `.px` source document.
+///
+/// The parser contributes a `PX1012` diagnostic when source is not syntactically
+/// valid; when it can produce an AST, static call diagnostics are accumulated
+/// alongside source/header diagnostics. Consumers should present the whole
+/// report and only activate when [`Self::is_valid`] is true.
+#[derive(Debug, Clone)]
+pub struct CheckedParseResult {
+    pub document: Option<PxDocument>,
+    pub report: CheckReport,
+}
+
+impl CheckedParseResult {
+    pub fn is_valid(&self) -> bool {
+        self.document.is_some() && self.report.is_valid()
+    }
+}
 
 /// Parse a complete `.px` document into the canonical AST.
 ///
@@ -90,69 +108,55 @@ pub fn parse(src: &str) -> Result<PxDocument, CompileError> {
     Ok(PxDocument { statements })
 }
 
+/// Validate every detectable source and static contract defect before a host
+/// activates a `.px` document.
+///
+/// The report is intentionally non-fail-fast: malformed or missing schema pins,
+/// unsupported parser-skip markers, host catalog mismatch, and all statically
+/// reachable call defects are returned together. Syntax recovery is bounded by
+/// the parser; a syntax failure is represented as `PX1012` and precludes AST
+/// semantic checking.
+pub fn validate_checked(
+    src: &str,
+    catalog: &ContractCatalog,
+    profile: ExecutionProfile,
+) -> CheckedParseResult {
+    let mut report = check_source_contract(src, catalog);
+    let document = match parse(src) {
+        Ok(document) => {
+            report
+                .diagnostics
+                .extend(check(&document, catalog, profile).diagnostics);
+            Some(document)
+        }
+        Err(error) => {
+            report.diagnostics.push(Diagnostic {
+                code: "PX1012",
+                procedure: "<document>".to_string(),
+                step: 0,
+                message: error.to_string(),
+            });
+            None
+        }
+    };
+    CheckedParseResult { document, report }
+}
+
 /// Parse and fail closed against the target runtime's typed call contracts.
 ///
-/// `#[parser-skip]` is deliberately rejected here: a commented declaration is
-/// not executable language and must never masquerade as a runtime contract.
+/// Use [`validate_checked`] when callers need every diagnostic for an activation
+/// UI, API response, CI report, or Decision Ledger record.
 pub fn parse_checked(
     src: &str,
     catalog: &ContractCatalog,
     profile: ExecutionProfile,
 ) -> Result<PxDocument, CheckedCompileError> {
-    if src.contains("[parser-skip]") {
-        return Err(CheckedCompileError::Contract(CheckReport {
-            diagnostics: vec![Diagnostic {
-                code: "PX1000",
-                procedure: "<document>".to_string(),
-                step: 0,
-                message: "`[parser-skip]` is not executable Praxis; replace it with a supported declaration or remove it".to_string(),
-            }],
-        }));
-    }
-    let schema = schema_ref_from_source(src).map_err(|message| {
-        CheckedCompileError::Contract(CheckReport {
-            diagnostics: vec![Diagnostic {
-                code: "PX1009",
-                procedure: "<document>".to_string(),
-                step: 0,
-                message,
-            }],
-        })
-    })?;
-    let Some(expected_schema) = catalog.schema() else {
-        return Err(CheckedCompileError::Contract(CheckReport {
-            diagnostics: vec![Diagnostic {
-                code: "PX1010",
-                procedure: "<document>".to_string(),
-                step: 0,
-                message: "checked compilation requires a host schema contract".to_string(),
-            }],
-        }));
-    };
-    if &schema != expected_schema {
-        return Err(CheckedCompileError::Contract(CheckReport {
-            diagnostics: vec![Diagnostic {
-                code: "PX1011",
-                procedure: "<document>".to_string(),
-                step: 0,
-                message: format!(
-                    "file pins {}@{}#{}, but host provides {}@{}#{}",
-                    schema.id,
-                    schema.version,
-                    schema.fingerprint,
-                    expected_schema.id,
-                    expected_schema.version,
-                    expected_schema.fingerprint,
-                ),
-            }],
-        }));
-    }
-    let document = parse(src).map_err(CheckedCompileError::Parse)?;
-    let report = check(&document, catalog, profile);
-    if report.is_valid() {
-        Ok(document)
+    let result = validate_checked(src, catalog, profile);
+    if result.is_valid() {
+        // `is_valid` guarantees `document` is present.
+        Ok(result.document.expect("checked document present"))
     } else {
-        Err(CheckedCompileError::Contract(report))
+        Err(CheckedCompileError::Contract(result.report))
     }
 }
 
@@ -396,5 +400,44 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("PX1011"));
+    }
+
+    #[test]
+    fn checked_validation_collects_source_and_call_defects_together() {
+        let source = concat!(
+            "# px-schema: other.runtime@1#different\n",
+            "# [parser-skip] config unsupported\n",
+            "procedure dispatch() -> string:\n",
+            "  unknown_action {unexpected: 1}\n",
+        );
+
+        let result = validate_checked(&source, &catalog(), ExecutionProfile::STRICT);
+        assert!(result.document.is_some(), "source itself should parse");
+        assert!(!result.is_valid());
+        let codes: Vec<_> = result
+            .report
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code)
+            .collect();
+        assert!(codes.contains(&"PX1000"));
+        assert!(codes.contains(&"PX1001"));
+        assert!(codes.contains(&"PX1011"));
+    }
+
+    #[test]
+    fn checked_validation_retains_preflight_diagnostics_when_syntax_is_invalid() {
+        let source = "# [parser-skip] unsupported\nprocedure broken(\n";
+        let result = validate_checked(&source, &catalog(), ExecutionProfile::STRICT);
+        assert!(result.document.is_none());
+        let codes: Vec<_> = result
+            .report
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code)
+            .collect();
+        assert!(codes.contains(&"PX1000"));
+        assert!(codes.contains(&"PX1009"));
+        assert!(codes.contains(&"PX1012"));
     }
 }
