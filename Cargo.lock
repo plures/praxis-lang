@@ -308,11 +308,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "px-check"
+version = "0.1.0"
+dependencies = [
+ "px-ast",
+]
+
+[[package]]
 name = "px-compiler"
 version = "0.1.0"
 dependencies = [
  "pest",
  "px-ast",
+ "px-check",
  "px-grammar",
 ]
 

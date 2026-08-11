@@ -26,7 +26,38 @@ pub use error::CompileError;
 
 use pest::Parser;
 use px_ast::{PxDocument, Statement};
+use px_check::{
+    check, schema_ref_from_source, CheckReport, ContractCatalog, Diagnostic, ExecutionProfile,
+};
 use px_grammar::{PxParser, Rule};
+
+/// A syntax or static-contract failure from [`parse_checked`].
+#[derive(Debug, Clone)]
+pub enum CheckedCompileError {
+    Parse(CompileError),
+    Contract(CheckReport),
+}
+
+impl std::fmt::Display for CheckedCompileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Parse(error) => error.fmt(f),
+            Self::Contract(report) => {
+                write!(f, "static contract check failed")?;
+                for diagnostic in &report.diagnostics {
+                    write!(
+                        f,
+                        "\n{} {} step {}: {}",
+                        diagnostic.code, diagnostic.procedure, diagnostic.step, diagnostic.message
+                    )?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl std::error::Error for CheckedCompileError {}
 
 /// Parse a complete `.px` document into the canonical AST.
 ///
@@ -59,6 +90,72 @@ pub fn parse(src: &str) -> Result<PxDocument, CompileError> {
     Ok(PxDocument { statements })
 }
 
+/// Parse and fail closed against the target runtime's typed call contracts.
+///
+/// `#[parser-skip]` is deliberately rejected here: a commented declaration is
+/// not executable language and must never masquerade as a runtime contract.
+pub fn parse_checked(
+    src: &str,
+    catalog: &ContractCatalog,
+    profile: ExecutionProfile,
+) -> Result<PxDocument, CheckedCompileError> {
+    if src.contains("[parser-skip]") {
+        return Err(CheckedCompileError::Contract(CheckReport {
+            diagnostics: vec![Diagnostic {
+                code: "PX1000",
+                procedure: "<document>".to_string(),
+                step: 0,
+                message: "`[parser-skip]` is not executable Praxis; replace it with a supported declaration or remove it".to_string(),
+            }],
+        }));
+    }
+    let schema = schema_ref_from_source(src).map_err(|message| {
+        CheckedCompileError::Contract(CheckReport {
+            diagnostics: vec![Diagnostic {
+                code: "PX1009",
+                procedure: "<document>".to_string(),
+                step: 0,
+                message,
+            }],
+        })
+    })?;
+    let Some(expected_schema) = catalog.schema() else {
+        return Err(CheckedCompileError::Contract(CheckReport {
+            diagnostics: vec![Diagnostic {
+                code: "PX1010",
+                procedure: "<document>".to_string(),
+                step: 0,
+                message: "checked compilation requires a host schema contract".to_string(),
+            }],
+        }));
+    };
+    if &schema != expected_schema {
+        return Err(CheckedCompileError::Contract(CheckReport {
+            diagnostics: vec![Diagnostic {
+                code: "PX1011",
+                procedure: "<document>".to_string(),
+                step: 0,
+                message: format!(
+                    "file pins {}@{}#{}, but host provides {}@{}#{}",
+                    schema.id,
+                    schema.version,
+                    schema.fingerprint,
+                    expected_schema.id,
+                    expected_schema.version,
+                    expected_schema.fingerprint,
+                ),
+            }],
+        }));
+    }
+    let document = parse(src).map_err(CheckedCompileError::Parse)?;
+    let report = check(&document, catalog, profile);
+    if report.is_valid() {
+        Ok(document)
+    } else {
+        Err(CheckedCompileError::Contract(report))
+    }
+}
+
 /// Parse a single top-level `.px` statement (e.g. one `entity`/`rule`/...).
 ///
 /// Convenience for tools that operate on one construct at a time. The input
@@ -83,6 +180,12 @@ pub fn parse_statement(src: &str) -> Result<Statement, CompileError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use px_ast::{BaseType, TypeExpr};
+    use px_check::{CallableContract, SchemaRef, StaticType};
+
+    fn catalog() -> ContractCatalog {
+        ContractCatalog::with_schema(SchemaRef::new("test.runtime", 1, "test-fingerprint"))
+    }
 
     #[test]
     fn parses_import_with_alias() {
@@ -248,5 +351,50 @@ mod tests {
             }
             other => panic!("expected legacy procedure, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn checked_parse_rejects_runtime_unsupported_accessor_parameters() {
+        let source = concat!(
+            "# px-schema: test.runtime@1#test-fingerprint\n",
+            "fact Task:\n",
+            "  id: string\n",
+            "procedure dispatch(task: Task from \"inbound\") -> string:\n",
+            "  send {task_id: $task.id}\n",
+        );
+        let mut catalog = catalog();
+        catalog.insert(
+            "send",
+            CallableContract::new(StaticType::Known(TypeExpr::Base(BaseType::String)))
+                .required("task_id", TypeExpr::Base(BaseType::String)),
+        );
+        let error = parse_checked(source, &catalog, ExecutionProfile::STRICT).unwrap_err();
+        assert!(error.to_string().contains("PX1007"));
+        assert!(parse_checked(source, &catalog, ExecutionProfile::ACCESSOR_VALUES).is_ok());
+    }
+
+    #[test]
+    fn checked_parse_rejects_parser_skip_markers() {
+        let error = parse_checked(
+            "# px-schema: test.runtime@1#test-fingerprint\n# [parser-skip] config runtime:\nprocedure p() -> string:\n  return \"ok\"\n",
+            &catalog(),
+            ExecutionProfile::STRICT,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("PX1000"));
+    }
+
+    #[test]
+    fn checked_parse_rejects_missing_or_mismatched_schema_pin() {
+        let source = "procedure p() -> string:\n  return \"ok\"\n";
+        assert!(parse_checked(source, &catalog(), ExecutionProfile::STRICT)
+            .unwrap_err()
+            .to_string()
+            .contains("PX1009"));
+        let source = "# px-schema: different.runtime@1#test-fingerprint\nprocedure p() -> string:\n  return \"ok\"\n";
+        assert!(parse_checked(source, &catalog(), ExecutionProfile::STRICT)
+            .unwrap_err()
+            .to_string()
+            .contains("PX1011"));
     }
 }
