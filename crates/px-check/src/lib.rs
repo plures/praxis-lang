@@ -581,11 +581,16 @@ fn resolve_variable(
 }
 
 fn assignable(actual: &StaticType, expected: &TypeExpr) -> bool {
-    match actual {
-        StaticType::Any | StaticType::Null => true,
-        StaticType::Known(actual) => {
-            actual == expected || matches!(expected, TypeExpr::Optional(_))
-        }
+    match expected {
+        TypeExpr::Optional(inner) => match actual {
+            StaticType::Null | StaticType::Any => true,
+            StaticType::Known(actual) => actual == inner.as_ref(),
+        },
+        _ => match actual {
+            StaticType::Any => true,
+            StaticType::Null => false,
+            StaticType::Known(actual) => actual == expected,
+        },
     }
 }
 
