@@ -337,11 +337,23 @@ fn check_steps(
                 let base = variables.clone();
                 let mut then_vars = base.clone();
                 check_steps(
-                    then_steps, procedure, catalog, records, profile, &mut then_vars, report,
+                    then_steps,
+                    procedure,
+                    catalog,
+                    records,
+                    profile,
+                    &mut then_vars,
+                    report,
                 );
                 let mut else_vars = base;
                 check_steps(
-                    else_steps, procedure, catalog, records, profile, &mut else_vars, report,
+                    else_steps,
+                    procedure,
+                    catalog,
+                    records,
+                    profile,
+                    &mut else_vars,
+                    report,
                 );
             }
             Step::Loop(loop_step) => {

@@ -368,9 +368,9 @@ mod tests {
             CallableContract::new(StaticType::Known(TypeExpr::Base(BaseType::String)))
                 .required("task_id", TypeExpr::Base(BaseType::String)),
         );
-        let error = parse_checked(&source, &catalog, ExecutionProfile::STRICT).unwrap_err();
+        let error = parse_checked(source, &catalog, ExecutionProfile::STRICT).unwrap_err();
         assert!(error.to_string().contains("PX1007"));
-        assert!(parse_checked(&source, &catalog, ExecutionProfile::ACCESSOR_VALUES).is_ok());
+        assert!(parse_checked(source, &catalog, ExecutionProfile::ACCESSOR_VALUES).is_ok());
     }
 
     #[test]
